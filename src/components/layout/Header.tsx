@@ -1,0 +1,241 @@
+'use client'
+
+import Link from 'next/link'
+import Image from 'next/image'
+import { usePathname } from 'next/navigation'
+import { cn } from '@/lib/utils'
+import { Home, History, Settings, Upload, LogIn, LogOut, User, Image as ImageIcon, Coins, RefreshCw } from 'lucide-react'
+import { useAuth } from '@/components/auth/AuthProvider'
+import { useState, useEffect, useRef } from 'react'
+import AuthModal from '@/components/auth/AuthModal'
+import { supabase } from '@/lib/supabase'
+import { useWallet } from '@/lib/hooks/useWallet'
+
+const navigation = [
+    { name: 'Try-On', href: '/', icon: Upload },
+    { name: 'Gallery', href: '/gallery', icon: ImageIcon },
+]
+
+export default function Header() {
+    const pathname = usePathname()
+    const { user, loading, signOut } = useAuth()
+    const { wallet, loading: walletLoading, refreshWallet } = useWallet()
+    const [authModalOpen, setAuthModalOpen] = useState(false)
+    const [userMenuOpen, setUserMenuOpen] = useState(false)
+    const [userProfile, setUserProfile] = useState<any>(null)
+    const userMenuRef = useRef<HTMLDivElement>(null)
+
+    const handleSignOut = async () => {
+        await signOut()
+        setUserMenuOpen(false)
+    }
+
+    const getInitials = (name: string | null) => {
+        if (!name) return 'U'
+        return name
+            .split(' ')
+            .map(word => word.charAt(0))
+            .join('')
+            .toUpperCase()
+            .slice(0, 2)
+    }
+
+    // Load user profile function
+    const loadProfile = async () => {
+        if (!user) return
+
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', user.id)
+                .single()
+
+            if (error) {
+                // If profile doesn't exist, create it
+                if (error.code === 'PGRST116') {
+                    console.log('Profile not found, creating one...')
+                    const { data: newProfile, error: createError } = await supabase
+                        .from('profiles')
+                        .insert([
+                            {
+                                id: user.id,
+                                email: user.email!,
+                                full_name: user.user_metadata?.full_name || null,
+                                avatar_url: user.user_metadata?.avatar_url || null,
+                            },
+                        ])
+                        .select()
+                        .single()
+
+                    if (createError) {
+                        console.error('Error creating profile:', createError)
+                        return
+                    }
+                    setUserProfile(newProfile)
+                } else {
+                    console.error('Error loading profile:', error)
+                }
+                return
+            }
+
+            setUserProfile(data)
+        } catch (err) {
+            console.error('Error loading profile:', err)
+        }
+    }
+
+    // Load user profile when user is authenticated
+    useEffect(() => {
+        if (user) {
+            loadProfile()
+        } else {
+            setUserProfile(null)
+        }
+    }, [user])
+
+    // Listen for profile updates
+    useEffect(() => {
+        const handleProfileUpdate = () => {
+            loadProfile()
+        }
+
+        window.addEventListener('profileUpdated', handleProfileUpdate)
+        return () => {
+            window.removeEventListener('profileUpdated', handleProfileUpdate)
+        }
+    }, [user])
+
+    // Close user menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+                setUserMenuOpen(false)
+            }
+        }
+
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside)
+        }
+    }, [])
+
+    return (
+        <header className="border-b bg-white">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div className="flex h-16 items-center justify-between">
+                    <div className="flex items-center">
+                        <Link href={process.env.NEXT_PUBLIC_LANDING_URL || "https://modelegiydir.com"} className="flex items-center space-x-3">
+                            <Image
+                                src="/logo.png"
+                                alt="Modele Giydir Logo"
+                                width={32}
+                                height={32}
+                                className="rounded-lg"
+                            />
+                            <span className="text-xl font-bold text-gray-900">Modele Giydir</span>
+                        </Link>
+                    </div>
+
+                    <nav className="flex space-x-8">
+                        {navigation.map((item) => {
+                            const isActive = pathname === item.href
+                            return (
+                                <Link
+                                    key={item.name}
+                                    href={item.href}
+                                    className={cn(
+                                        'inline-flex items-center space-x-2 px-3 py-2 text-sm font-medium rounded-md transition-colors',
+                                        isActive
+                                            ? 'bg-purple-100 text-purple-700'
+                                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                                    )}
+                                >
+                                    <item.icon className="h-4 w-4" />
+                                    <span>{item.name}</span>
+                                </Link>
+                            )
+                        })}
+                    </nav>
+
+                    <div className="flex items-center space-x-4">
+                        {/* Credits Display */}
+                        {user && (
+                            <div className="flex items-center space-x-2 px-3 py-1 bg-gradient-to-r from-yellow-100 to-orange-100 rounded-full border border-yellow-200">
+                                <Coins className="h-4 w-4 text-yellow-600" />
+                                <span className="text-sm font-medium text-yellow-800">
+                                    {walletLoading ? '...' : wallet?.credits || 0}
+                                </span>
+                                <button
+                                    onClick={refreshWallet}
+                                    disabled={walletLoading}
+                                    className="ml-1 p-1 rounded-full hover:bg-yellow-200 transition-colors disabled:opacity-50"
+                                    title="Refresh wallet balance"
+                                >
+                                    <RefreshCw className={`h-3 w-3 text-yellow-600 ${walletLoading ? 'animate-spin' : ''}`} />
+                                </button>
+                            </div>
+                        )}
+
+                        {loading ? (
+                            <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse"></div>
+                        ) : user ? (
+                            <div className="relative" ref={userMenuRef}>
+                                <button
+                                    onClick={() => setUserMenuOpen(!userMenuOpen)}
+                                    className="flex items-center space-x-2 p-2 rounded-md hover:bg-gray-100 transition-colors"
+                                >
+                                    <div className="h-8 w-8 rounded-full bg-purple-600 flex items-center justify-center text-white text-sm font-bold">
+                                        {getInitials(userProfile?.full_name || user.user_metadata?.full_name)}
+                                    </div>
+                                    <span className="text-sm font-medium text-gray-700">
+                                        {userProfile?.full_name || user.user_metadata?.full_name || user.email?.split('@')[0]}
+                                    </span>
+                                </button>
+
+                                {userMenuOpen && (
+                                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
+                                        <div className="py-1">
+                                            <div className="px-4 py-2 text-sm text-gray-900 border-b">
+                                                <div className="font-medium">{userProfile?.full_name || user.user_metadata?.full_name || 'User'}</div>
+                                                <div className="text-gray-500">{user.email}</div>
+                                            </div>
+                                            <Link
+                                                href="/profile"
+                                                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors"
+                                                onClick={() => setUserMenuOpen(false)}
+                                            >
+                                                <User className="inline h-4 w-4 mr-2" />
+                                                Profile
+                                            </Link>
+                                            <button
+                                                onClick={handleSignOut}
+                                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors"
+                                            >
+                                                <LogOut className="inline h-4 w-4 mr-2" />
+                                                Sign Out
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <button
+                                onClick={() => setAuthModalOpen(true)}
+                                className="inline-flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 transition-colors"
+                            >
+                                <LogIn className="h-4 w-4" />
+                                <span>Sign In</span>
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            <AuthModal
+                isOpen={authModalOpen}
+                onClose={() => setAuthModalOpen(false)}
+            />
+        </header>
+    )
+} 

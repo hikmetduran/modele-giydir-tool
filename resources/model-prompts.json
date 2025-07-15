@@ -1,0 +1,94 @@
+{
+    "model_photos": [
+        {
+            "name": "Jane",
+            "description": "A young Asian woman, with urban morning setup",
+            "gender": "female",
+            "prompt": "A young Asian woman wearing a plain white t-shirt and jeans, standing on a quiet street with trees lining the sidewalk. Camera at mid-body height, full torso in frame. She smiles softly, hands relaxed at her sides. Early morning sunlight and soft shadows. Photorealistic, lifestyle fashion photo."
+        },
+        {
+            "name": "Aisha",
+            "description": "A stylish Black woman in the city",
+            "gender": "female",
+            "prompt": "A stylish Black woman in her 20s wearing a plain white oversized t-shirt and biker shorts, posing confidently on a downtown city street. Full body visible from knees up, slightly angled pose. Late afternoon golden light, blurred cars and buildings in the background. Streetwear vibe, urban lifestyle look."
+        },
+        {
+            "name": "Layla",
+            "description": "A Middle Eastern woman at the beach boardwalk",
+            "gender": "female",
+            "prompt": "A Middle Eastern woman in her early 30s wearing a fitted white t-shirt and light denim jeans, standing on a boardwalk by the sea. Camera at chest level, showing full upper body. Wind in her hair, sunglasses in hand. Soft sunlight and ocean in the background. Relaxed and natural."
+        },
+        {
+            "name": "Emily",
+            "description": "A white teenage girl in a garden",
+            "gender": "female",
+            "prompt": "A white teenage girl wearing a plain white t-shirt tucked into a flowy skirt, standing on a floral garden path. Frontal pose, head to hips visible. Holding a small flower, slightly shy smile. Daylight, shallow depth of field. Whimsical and light atmosphere."
+        },
+        {
+            "name": "Sofia",
+            "description": "A Latina woman with a vintage scooter",
+            "gender": "female",
+            "prompt": "A Latina woman in her late 20s wearing a tucked-in white t-shirt and high-waisted jeans, leaning slightly against a vintage scooter parked on a cobblestone street. Full upper body visible, camera at waist height. Urban background with a retro feel. Late morning sun, natural smile."
+        },
+        {
+            "name": "Riley",
+            "description": "Tomboy style woman on a basketball court",
+            "gender": "female",
+            "prompt": "A fit young woman with tan skin and short hair wearing a white t-shirt and joggers, posing on a basketball court. Shot from mid-thigh up. Candid, relaxed pose, one hand holding a water bottle. Sunny weather, athletic lifestyle vibe."
+        },
+        {
+            "name": "Margaret",
+            "description": "Older white woman walking in suburban area",
+            "gender": "female",
+            "prompt": "A mature white woman around 60 years old wearing a plain white t-shirt and beige slacks, walking in a leafy suburban neighborhood. Captured mid-step, camera positioned for full torso. Calm expression, gentle sunlight, family-friendly atmosphere."
+        },
+        {
+            "name": "Priya",
+            "description": "Indian woman in front of a graffiti wall",
+            "gender": "female",
+            "prompt": "An Indian woman in her 30s wearing a clean white t-shirt and skinny jeans, standing in front of a colorful graffiti wall. Slightly turned body, confident look. Camera at mid-body level showing her full t-shirt. Bright colors contrast with the neutral shirt. Urban art-inspired style."
+        },
+        {
+            "name": "Maya",
+            "description": "Indigenous woman in a forest",
+            "gender": "female",
+            "prompt": "An Indigenous woman in her 40s wearing a white organic cotton t-shirt and khaki pants, standing at the edge of a pine forest. Full upper body visible, natural stance, minimal makeup. Diffused sunlight through the trees, earthy tones and calm expression."
+        },
+        {
+            "name": "Yuna",
+            "description": "East Asian woman on a rooftop at sunset",
+            "gender": "female",
+            "prompt": "An East Asian woman in her mid-20s wearing a simple white t-shirt and black skirt, leaning on a rooftop railing at sunset. Captured from the waist up. Wind-blown hair, pensive look. City skyline blurred in the background. Soft pastel light, urban calm mood."
+        },
+        {
+            "name": "Daniel",
+            "description": "Young white male in a modern city park",
+            "gender": "male",
+            "prompt": "A young white man wearing a plain white regular-fit t-shirt and straight jeans, standing in a sunny city park with trees and benches around. Camera at waist level, showing full upper body. The t-shirt should not be saggy or tucked in — it should be a classic, well-fitting, regular cut. Natural lighting, casual posture, relaxed expression."
+        },
+        {
+            "name": "Malik",
+            "description": "Black male leaning casually in an urban alley",
+            "gender": "male",
+            "prompt": "A Black man in his late 20s wearing a plain white regular-fit t-shirt and dark jeans, leaning casually against a brick wall in a shaded urban alley. The camera shows head to hips. T-shirt must be regular fit — not saggy, not tucked in. Natural, confident body language. Subtle shadows, soft daylight."
+        },
+        {
+            "name": "Kenji",
+            "description": "East Asian male on a rooftop with city view",
+            "gender": "male",
+            "prompt": "An East Asian man in his early 30s wearing a regular-fit white t-shirt and beige chinos, standing on a rooftop with a blurred city skyline in the background. Camera at chest height, framing head to hips. Shirt should not be tucked in or loose — must have a classic, clean fit. Golden hour lighting, slightly thoughtful pose."
+        },
+        {
+            "name": "Carlos",
+            "description": "Latino male walking on coastal boardwalk",
+            "gender": "male",
+            "prompt": "A Latino man in his 20s wearing a plain white regular-fit t-shirt and shorts, walking casually on a wooden coastal boardwalk with sea in the background. Camera captures head to mid-thigh. The shirt should be regular fit only — not tucked, not saggy. Candid vibe, clear natural light, slight breeze."
+        },
+        {
+            "name": "Omar",
+            "description": "Middle Eastern male in a stone-paved old town",
+            "gender": "male",
+            "prompt": "A Middle Eastern man in his 30s wearing a clean white regular-fit t-shirt and light jeans, standing on a narrow stone-paved street in an old town district. Shot from head to hips, t-shirt must be well-fitted and untucked, not saggy. Hands relaxed, looking calmly at the camera. Warm ambient lighting, realistic texture."
+        }
+    ]
+}

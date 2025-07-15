@@ -1,0 +1,38 @@
+# Fal AI Setup Instructions
+
+## Required Environment Variables
+
+Add these to your .env.local file:
+
+```
+# Fal AI Configuration
+# Get your API key from https://fal.ai/
+NEXT_PUBLIC_FAL_KEY=your_fal_api_key_here
+
+# Supabase Configuration (if not already set)
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+## Getting Your Fal AI API Key
+
+1. Go to https://fal.ai/
+2. Sign up for an account
+3. Navigate to your dashboard
+4. Get your API key
+5. Add it to your .env.local file as NEXT_PUBLIC_FAL_KEY
+
+## Pricing
+
+- Fal AI Try-On v1.6 costs $0.075 per generation
+- Make sure to monitor your usage in the Fal AI dashboard
+- Consider adding usage limits in production
+
+## Testing
+
+After setting up the environment variable:
+
+1. Restart your development server
+2. Upload a product image
+3. Select a model
+4. The AI processing should now use real Fal AI instead of mock data 

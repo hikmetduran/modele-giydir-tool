@@ -49,7 +49,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
                     setTimeout(() => onClose(), 2000)
                 }
             } else {
-                const { data, error } = await supabase.auth.signInWithPassword({
+                const { error } = await supabase.auth.signInWithPassword({
                     email: formData.email,
                     password: formData.password
                 })
@@ -59,8 +59,8 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
                 setSuccess('Signed in successfully!')
                 setTimeout(() => onClose(), 1000)
             }
-        } catch (err: any) {
-            setError(err.message || 'An error occurred')
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'An error occurred')
         } finally {
             setLoading(false)
         }

@@ -30,7 +30,7 @@ export interface ProcessingStatus {
 export async function submitTryOnRequest(input: TryOnInput): Promise<{ requestId: string } | { error: string }> {
     try {
         console.log('🚀 Submitting try-on request to Fal AI...')
-        var randomSeed = Math.floor(Math.random() * 10000)
+        const randomSeed = Math.floor(Math.random() * 10000)
 
         const result = await fal.queue.submit('fal-ai/fashn/tryon/v1.6', {
             input: {

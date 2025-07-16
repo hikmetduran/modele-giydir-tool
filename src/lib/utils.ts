@@ -141,7 +141,7 @@ export function groupByDate<T extends { created_at: string }>(items: T[]): Recor
     }, {} as Record<string, T[]>)
 }
 
-export function sortDateGroups(groups: Record<string, any[]>): [string, any[]][] {
+export function sortDateGroups<T>(groups: Record<string, T[]>): [string, T[]][] {
     return Object.entries(groups).sort(([a], [b]) => {
         return new Date(b).getTime() - new Date(a).getTime()
     })

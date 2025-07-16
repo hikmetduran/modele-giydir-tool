@@ -96,7 +96,7 @@ async function testSupabaseConnection() {
 
     try {
         // Test database connection
-        const { data, error } = await supabaseServer
+        const { error } = await supabaseServer
             .from('model_photos')
             .select('id')
             .limit(1)
@@ -109,7 +109,7 @@ async function testSupabaseConnection() {
         console.log('  ✅ Database connection successful')
 
         // Test storage bucket
-        const { data: storageData, error: storageError } = await supabaseServer.storage
+        const { error: storageError } = await supabaseServer.storage
             .from('model-photos')
             .list('', { limit: 1 })
 

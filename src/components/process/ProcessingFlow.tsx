@@ -243,7 +243,7 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
                             progress: 100,
                             status: 'completed',
                             completedAt: new Date(),
-                            resultUrl: result_image_url
+                            resultUrl: result_image_url as string
                         })
                         // Refresh wallet to ensure balance is up to date
                         refreshWallet()
@@ -254,7 +254,7 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
                             progress: 0,
                             status: 'failed',
                             completedAt: new Date(),
-                            error: error_message || 'Processing failed'
+                            error: (error_message as string) || 'Processing failed'
                         })
                         // Refresh wallet to ensure balance is up to date (refund should have occurred)
                         refreshWallet()
@@ -496,7 +496,7 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
                             <Download className="mx-auto h-16 w-16 text-purple-600 mb-4" />
                             <h2 className="text-2xl font-semibold text-gray-900 mb-2">Your Results</h2>
                             <p className="text-gray-600 mb-6">
-                                Here's how your products look on the selected model
+                                Here&apos;s how your products look on the selected model
                             </p>
 
                             <div className="flex justify-center space-x-4 mb-8">

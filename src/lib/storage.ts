@@ -1,4 +1,4 @@
-import { AppState, ProcessingJob, ProcessingResult, UploadedImage } from './types'
+import { AppState, ProcessingJob, ProcessingResult } from './types'
 
 const STORAGE_KEYS = {
     APP_STATE: 'modele-giydir-app-state',

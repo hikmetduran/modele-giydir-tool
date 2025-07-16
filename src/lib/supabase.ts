@@ -150,7 +150,7 @@ export type Database = {
                     ai_model: string | null
                     processing_time_seconds: number | null
                     error_message: string | null
-                    metadata: any | null
+                    metadata: Record<string, unknown> | null
                     created_at: string
                     updated_at: string
                 }
@@ -166,7 +166,7 @@ export type Database = {
                     ai_model?: string | null
                     processing_time_seconds?: number | null
                     error_message?: string | null
-                    metadata?: any | null
+                    metadata?: Record<string, unknown> | null
                     created_at?: string
                     updated_at?: string
                 }
@@ -182,7 +182,7 @@ export type Database = {
                     ai_model?: string | null
                     processing_time_seconds?: number | null
                     error_message?: string | null
-                    metadata?: any | null
+                    metadata?: Record<string, unknown> | null
                     created_at?: string
                     updated_at?: string
                 }

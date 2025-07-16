@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import { User, Mail, Calendar, Edit2, Save, X, Coins, TrendingUp, TrendingDown, RefreshCw } from 'lucide-react'
@@ -37,14 +37,7 @@ export default function ProfilePage() {
         }
     }, [user, authLoading, router])
 
-    // Load profile data
-    useEffect(() => {
-        if (user) {
-            loadProfile()
-        }
-    }, [user])
-
-    const loadProfile = async () => {
+    const loadProfile = useCallback(async () => {
         try {
             const { data, error } = await supabase
                 .from('profiles')
@@ -90,13 +83,20 @@ export default function ProfilePage() {
             setFormData({
                 full_name: data.full_name || ''
             })
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Error loading profile:', err)
             setError('Failed to load profile')
         } finally {
             setLoading(false)
         }
-    }
+    }, [user])
+
+    // Load profile data
+    useEffect(() => {
+        if (user) {
+            loadProfile()
+        }
+    }, [user, loadProfile])
 
     const handleSave = async () => {
         if (!user) return
@@ -123,7 +123,7 @@ export default function ProfilePage() {
 
             // Trigger custom event to update header
             window.dispatchEvent(new CustomEvent('profileUpdated'))
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Error updating profile:', err)
             setError('Failed to update profile')
         } finally {
@@ -310,8 +310,8 @@ export default function ProfilePage() {
                                                     </div>
                                                 </div>
                                                 <div className={`text-sm font-medium ${transaction.transaction_type === 'debit'
-                                                        ? 'text-red-600'
-                                                        : 'text-green-600'
+                                                    ? 'text-red-600'
+                                                    : 'text-green-600'
                                                     }`}>
                                                     {transaction.transaction_type === 'debit' ? '-' : '+'}
                                                     {Math.abs(transaction.amount)}

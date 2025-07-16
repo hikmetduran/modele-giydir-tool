@@ -7,7 +7,7 @@ import { join } from 'path'
 // Load .env.local file
 config({ path: join(process.cwd(), '.env.local') })
 
-import { execSync } from 'child_process'
+// import { execSync } from 'child_process'
 import { existsSync } from 'fs'
 
 // Colors for console output
@@ -65,7 +65,8 @@ function checkModelPrompts() {
     }
 
     try {
-        const content = require(promptsPath)
+        const fs = require('fs')
+        const content = JSON.parse(fs.readFileSync(promptsPath, 'utf8'))
         if (!content.model_photos || !Array.isArray(content.model_photos)) {
             throw new Error('Invalid format: missing model_photos array')
         }
@@ -114,10 +115,11 @@ async function runGenerator() {
 
             // Load and display what would be generated
             const promptsPath = join(process.cwd(), '..', 'resources', 'model-prompts.json')
-            const content = require(promptsPath)
+            const fs = require('fs')
+            const content = JSON.parse(fs.readFileSync(promptsPath, 'utf8'))
 
             console.log(colorize('Models that would be processed:', 'bright'))
-            content.model_photos.forEach((model: any, index: number) => {
+            content.model_photos.forEach((model: { name: string; gender: string; description: string }, index: number) => {
                 console.log(`  ${index + 1}. ${colorize(model.name, 'cyan')} (${model.gender})`)
                 console.log(`     ${model.description}`)
             })

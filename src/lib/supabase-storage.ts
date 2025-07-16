@@ -13,7 +13,7 @@ export async function testStorageConnection() {
         for (const bucket of requiredBuckets) {
             try {
                 // Try to list files in the bucket (this should work with our policies)
-                const { data, error } = await supabase.storage
+                const { error } = await supabase.storage
                     .from(bucket)
                     .list('', { limit: 1 })
 
@@ -132,7 +132,7 @@ export async function uploadFile(
         if (error) {
             console.error(`❌ [${fileId}] Supabase storage error:`, {
                 errorMessage: error.message,
-                errorCode: (error as any).statusCode || 'unknown',
+                errorCode: (error as { statusCode?: string }).statusCode || 'unknown',
                 errorDetails: error,
                 uploadDuration
             })
@@ -427,7 +427,7 @@ export async function getProductImageId(userId: string, originalFilename: string
             .limit(1)
             .single()
 
-        const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any
+        const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as { data: { id: string } | null; error: Record<string, unknown> | null }
 
         console.log('🗄️ Product image query result:', { data, error })
 
@@ -449,7 +449,7 @@ export async function getProductImageId(userId: string, originalFilename: string
                     setTimeout(() => reject(new Error('Flexible search timeout after 5 seconds')), 5000)
                 })
 
-                const { data: flexibleData, error: flexibleError } = await Promise.race([flexibleQuery, flexibleTimeoutPromise]) as any
+                const { data: flexibleData, error: flexibleError } = await Promise.race([flexibleQuery, flexibleTimeoutPromise]) as { data: { id: string; original_filename: string }[] | null; error: Record<string, unknown> | null }
 
                 if (flexibleError) {
                     console.error('❌ Flexible search also failed:', flexibleError)
@@ -457,19 +457,19 @@ export async function getProductImageId(userId: string, originalFilename: string
                 }
 
                 // Find the best match
-                const match = flexibleData?.find((img: any) => img.original_filename === originalFilename)
+                const match = flexibleData?.find((img: { original_filename: string }) => img.original_filename === originalFilename)
                 if (match) {
                     console.log('✅ Found match with flexible search:', match.id)
                     return match.id
                 }
 
-                console.log('❌ No match found in flexible search. Available files:', flexibleData?.map((img: any) => img.original_filename))
+                console.log('❌ No match found in flexible search. Available files:', flexibleData?.map((img: { original_filename: string }) => img.original_filename))
             }
 
             return null
         }
 
-        return data.id
+        return data?.id || null
     } catch (error) {
         console.error('❌ Error in getProductImageId:', error)
         return null
@@ -494,7 +494,7 @@ export async function getModelPhotoId(localModelId: string): Promise<string | nu
             .eq('is_active', true)
             .single()
 
-        const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any
+        const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as { data: { id: string; name: string } | null; error: Record<string, unknown> | null }
 
         console.log('🗄️ Model photo query result:', { data, error })
 
@@ -517,7 +517,7 @@ export async function getModelPhotoId(localModelId: string): Promise<string | nu
                 .limit(1)
                 .single()
 
-            const { data: fallbackData, error: fallbackError } = await Promise.race([fallbackQueryPromise, fallbackTimeoutPromise]) as any
+            const { data: fallbackData, error: fallbackError } = await Promise.race([fallbackQueryPromise, fallbackTimeoutPromise]) as { data: { id: string; name: string } | null; error: Record<string, unknown> | null }
 
             if (fallbackError || !fallbackData) {
                 console.error('❌ Fallback lookup also failed:', fallbackError)
@@ -528,8 +528,8 @@ export async function getModelPhotoId(localModelId: string): Promise<string | nu
             return fallbackData.id
         }
 
-        console.log('✅ Found model photo ID:', data.id, 'for local model:', localModelId)
-        return data.id
+        console.log('✅ Found model photo ID:', data?.id, 'for local model:', localModelId)
+        return data?.id || null
     } catch (error) {
         console.error('❌ Error in getModelPhotoId:', error)
         return null
@@ -583,7 +583,7 @@ export async function createTryOnResult(
 export async function getTryOnResultStatus(
     jobId: string,
     userId: string
-): Promise<{ success: boolean; data?: any; error?: string }> {
+): Promise<{ success: boolean; data?: Record<string, unknown>; error?: string }> {
     try {
         const { data, error } = await supabase
             .from('try_on_results')
@@ -618,7 +618,7 @@ export async function saveTryOnResult(
     productImageId: string,
     modelPhotoId: string,
     resultImageBlob: Blob,
-    metadata?: any
+    metadata?: Record<string, unknown>
 ) {
     const operationId = `save-result-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`
 

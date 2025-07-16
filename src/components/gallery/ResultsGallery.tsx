@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
-import { Search, Filter, Download, Heart, Calendar, Clock, User, MoreHorizontal, X, Check, ChevronDown, Star, Trash2, Eye, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
-import { cn, formatTimeAgo, formatDate, formatDateTime, formatTime, groupByDate, sortDateGroups, downloadImage, downloadMultipleImages, formatFileSize } from '@/lib/utils'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { Search, Download, Heart, Calendar, Clock, User, Check } from 'lucide-react'
+import { cn, formatDate, formatTime, groupByDate, sortDateGroups, downloadImage, downloadMultipleImages } from '@/lib/utils'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { getUserTryOnResultsGroupedByDate } from '@/lib/supabase-storage'
 
@@ -15,7 +15,7 @@ interface TryOnResult {
     ai_provider: string
     ai_model: string
     processing_time_seconds: number
-    metadata: any
+    metadata: Record<string, unknown>
     product_images: {
         id: string
         original_filename: string
@@ -47,17 +47,11 @@ export default function ResultsGallery({ className }: ResultsGalleryProps) {
     const [error, setError] = useState<string | null>(null)
     const [searchTerm, setSearchTerm] = useState('')
     const [selectedResults, setSelectedResults] = useState<Set<string>>(new Set())
-    const [sortBy, setSortBy] = useState<SortBy>('date')
-    const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
+    const [sortBy] = useState<SortBy>('date')
+    const [sortOrder] = useState<SortOrder>('desc')
     const [filterGender, setFilterGender] = useState<string>('all')
     const [favorites, setFavorites] = useState<Set<string>>(new Set())
     const [showBulkActions, setShowBulkActions] = useState(false)
-
-    // Load data on mount
-    useEffect(() => {
-        loadResults()
-        loadFavorites()
-    }, [user])
 
     // Load favorites from localStorage
     const loadFavorites = () => {
@@ -80,7 +74,7 @@ export default function ResultsGallery({ className }: ResultsGalleryProps) {
         }
     }
 
-    const loadResults = async () => {
+    const loadResults = useCallback(async () => {
         if (!user) return
 
         setLoading(true)
@@ -104,7 +98,13 @@ export default function ResultsGallery({ className }: ResultsGalleryProps) {
         } finally {
             setLoading(false)
         }
-    }
+    }, [user])
+
+    // Load data on mount
+    useEffect(() => {
+        loadResults()
+        loadFavorites()
+    }, [user, loadResults])
 
     // Filter and sort results
     const filteredAndSortedResults = useMemo(() => {
@@ -419,9 +419,9 @@ function ResultCard({ result, isSelected, isFavorite, onToggleSelection, onToggl
         downloadImage(result.result_image_url, `tryon-${result.product_images.original_filename}-${result.model_photos.name}.jpg`)
     }
 
-    const downloadOriginal = () => {
-        downloadImage(result.product_images.image_url, `original-${result.product_images.original_filename}`)
-    }
+    // const downloadOriginal = () => {
+    //     downloadImage(result.product_images.image_url, `original-${result.product_images.original_filename}`)
+    // }
 
     return (
         <div className={cn(

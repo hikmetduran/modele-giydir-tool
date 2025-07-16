@@ -54,7 +54,7 @@ interface MinimaxOutput {
 
 class ModelPhotoGenerator {
     private readonly BUCKET_NAME = 'model-photos'
-    private readonly ASPECT_RATIO: '2:3' = '2:3' // Portrait format suitable for fashion models
+    private readonly ASPECT_RATIO = '2:3' as const // Portrait format suitable for fashion models
 
     constructor() {
         this.validateEnvironment()
@@ -140,8 +140,8 @@ class ModelPhotoGenerator {
                     } else {
                         throw new Error('No image URL in response')
                     }
-                } else if (status.status === 'FAILED') {
-                    throw new Error(`Generation failed: ${JSON.stringify(status.logs)}`)
+                } else if ((status as { status: string; logs?: unknown }).status === 'FAILED') {
+                    throw new Error(`Generation failed: ${JSON.stringify((status as { logs?: unknown }).logs)}`)
                 }
 
                 attempts++
@@ -175,7 +175,7 @@ class ModelPhotoGenerator {
 
             console.log(`📤 Uploading ${fileName} to Supabase storage...`)
 
-            const { data, error } = await supabaseServer.storage
+            const { error } = await supabaseServer.storage
                 .from(this.BUCKET_NAME)
                 .upload(filePath, imageBlob, {
                     contentType: 'image/jpeg',

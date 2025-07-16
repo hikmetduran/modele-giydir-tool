@@ -4,9 +4,9 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { Home, History, Settings, Upload, LogIn, LogOut, User, Image as ImageIcon, Coins, RefreshCw } from 'lucide-react'
+import { Upload, LogIn, LogOut, User, Image as ImageIcon, Coins, RefreshCw } from 'lucide-react'
 import { useAuth } from '@/components/auth/AuthProvider'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import AuthModal from '@/components/auth/AuthModal'
 import { supabase } from '@/lib/supabase'
 import { useWallet } from '@/lib/hooks/useWallet'
@@ -22,7 +22,7 @@ export default function Header() {
     const { wallet, loading: walletLoading, refreshWallet } = useWallet()
     const [authModalOpen, setAuthModalOpen] = useState(false)
     const [userMenuOpen, setUserMenuOpen] = useState(false)
-    const [userProfile, setUserProfile] = useState<any>(null)
+    const [userProfile, setUserProfile] = useState<{ full_name?: string | null } | null>(null)
     const userMenuRef = useRef<HTMLDivElement>(null)
 
     const handleSignOut = async () => {
@@ -41,7 +41,7 @@ export default function Header() {
     }
 
     // Load user profile function
-    const loadProfile = async () => {
+    const loadProfile = useCallback(async () => {
         if (!user) return
 
         try {
@@ -83,7 +83,7 @@ export default function Header() {
         } catch (err) {
             console.error('Error loading profile:', err)
         }
-    }
+    }, [user])
 
     // Load user profile when user is authenticated
     useEffect(() => {
@@ -92,7 +92,7 @@ export default function Header() {
         } else {
             setUserProfile(null)
         }
-    }, [user])
+    }, [user, loadProfile])
 
     // Listen for profile updates
     useEffect(() => {
@@ -104,7 +104,7 @@ export default function Header() {
         return () => {
             window.removeEventListener('profileUpdated', handleProfileUpdate)
         }
-    }, [user])
+    }, [loadProfile])
 
     // Close user menu when clicking outside
     useEffect(() => {

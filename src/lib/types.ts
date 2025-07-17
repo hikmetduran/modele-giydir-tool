@@ -46,6 +46,7 @@ export interface ModelImage {
     url: string
     preview: string
     description?: string
+    gender?: 'male' | 'female' | 'unisex'
 }
 
 export interface ProcessingJob {

@@ -31,7 +31,8 @@ export async function getAllModelImages(): Promise<ModelImage[]> {
             name: photo.name,
             url: photo.image_url,
             preview: photo.image_url, // Using the same URL for preview, you can create thumbnails later
-            description: photo.description || undefined
+            description: photo.description || undefined,
+            gender: photo.gender || undefined
         }))
 
         // Update cache
@@ -70,7 +71,8 @@ export async function getModelById(id: string): Promise<ModelImage | undefined> 
             name: data.name,
             url: data.image_url,
             preview: data.image_url,
-            description: data.description || undefined
+            description: data.description || undefined,
+            gender: data.gender || undefined
         }
     } catch (error) {
         console.error('Failed to fetch model by ID:', error)
@@ -116,7 +118,8 @@ export async function getModelsByStyle(style: string): Promise<ModelImage[]> {
             name: photo.name,
             url: photo.image_url,
             preview: photo.image_url,
-            description: photo.description || undefined
+            description: photo.description || undefined,
+            gender: photo.gender || undefined
         }))
     } catch (error) {
         console.error('Failed to filter models by style:', error)
@@ -144,7 +147,8 @@ export async function getModelsByGender(gender: 'male' | 'female' | 'unisex'): P
             name: photo.name,
             url: photo.image_url,
             preview: photo.image_url,
-            description: photo.description || undefined
+            description: photo.description || undefined,
+            gender: photo.gender || undefined
         }))
     } catch (error) {
         console.error('Failed to filter models by gender:', error)

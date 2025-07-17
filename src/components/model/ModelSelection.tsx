@@ -19,6 +19,7 @@ export default function ModelSelection({
     className
 }: ModelSelectionProps) {
     const [searchTerm, setSearchTerm] = useState('')
+    const [genderFilter, setGenderFilter] = useState<'all' | 'male' | 'female'>('all')
     const [models, setModels] = useState<ModelImage[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -42,10 +43,14 @@ export default function ModelSelection({
         fetchModels()
     }, [])
 
-    const filteredModels = models.filter(model =>
-        model.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (model.description?.toLowerCase().includes(searchTerm.toLowerCase()) || false)
-    )
+    const filteredModels = models.filter(model => {
+        const matchesSearch = model.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (model.description?.toLowerCase().includes(searchTerm.toLowerCase()) || false)
+
+        const matchesGender = genderFilter === 'all' || model.gender === genderFilter
+
+        return matchesSearch && matchesGender
+    })
 
     const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
         // Set a fallback image or hide the image
@@ -72,16 +77,39 @@ export default function ModelSelection({
                 </p>
 
                 {/* Search Bar */}
-                <div className="relative max-w-md mx-auto">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <div className="relative max-w-md mx-auto mb-6">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
                     <input
                         type="text"
                         placeholder="Search models..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         disabled={loading}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full pl-10 pr-4 py-2 border border-gray-400 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none disabled:opacity-50 disabled:cursor-not-allowed bg-white text-gray-900"
                     />
+                </div>
+
+                {/* Gender Filter */}
+                <div className="flex justify-center space-x-2">
+                    {[
+                        { key: 'all', label: 'All Models' },
+                        { key: 'male', label: 'Male' },
+                        { key: 'female', label: 'Female' }
+                    ].map((filter) => (
+                        <button
+                            key={filter.key}
+                            onClick={() => setGenderFilter(filter.key as 'all' | 'male' | 'female')}
+                            disabled={loading}
+                            className={cn(
+                                'px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
+                                genderFilter === filter.key
+                                    ? 'bg-purple-600 text-white'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            )}
+                        >
+                            {filter.label}
+                        </button>
+                    ))}
                 </div>
             </div>
 
@@ -143,9 +171,22 @@ export default function ModelSelection({
 
                             {/* Model Info */}
                             <div className="text-center">
-                                <h3 className="font-medium text-gray-900 text-sm mb-1 truncate">
-                                    {model.name}
-                                </h3>
+                                <div className="flex items-center justify-center mb-1">
+                                    <h3 className="font-medium text-gray-900 text-sm truncate">
+                                        {model.name}
+                                    </h3>
+                                    {model.gender && (
+                                        <span className={cn(
+                                            'ml-2 px-2 py-0.5 text-xs rounded-full',
+                                            model.gender === 'male' ? 'bg-blue-100 text-blue-700' :
+                                                model.gender === 'female' ? 'bg-pink-100 text-pink-700' :
+                                                    'bg-gray-100 text-gray-700'
+                                        )}>
+                                            {model.gender === 'male' ? 'M' :
+                                                model.gender === 'female' ? 'F' : 'U'}
+                                        </span>
+                                    )}
+                                </div>
                                 {model.description && (
                                     <p className="text-xs text-gray-500 line-clamp-2">
                                         {model.description}
@@ -161,13 +202,22 @@ export default function ModelSelection({
             {!loading && !error && filteredModels.length === 0 && models.length > 0 && (
                 <div className="text-center py-12">
                     <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                    <p className="text-gray-600">No models found matching your search.</p>
-                    <button
-                        onClick={() => setSearchTerm('')}
-                        className="mt-2 text-purple-600 hover:text-purple-700 text-sm"
-                    >
-                        Clear search
-                    </button>
+                    <p className="text-gray-600">No models found matching your search and filter criteria.</p>
+                    <div className="mt-2 space-x-2">
+                        <button
+                            onClick={() => setSearchTerm('')}
+                            className="text-purple-600 hover:text-purple-700 text-sm"
+                        >
+                            Clear search
+                        </button>
+                        <span className="text-gray-400">•</span>
+                        <button
+                            onClick={() => setGenderFilter('all')}
+                            className="text-purple-600 hover:text-purple-700 text-sm"
+                        >
+                            Show all genders
+                        </button>
+                    </div>
                 </div>
             )}
 
@@ -200,9 +250,22 @@ export default function ModelSelection({
                             />
                         </div>
                         <div className="flex-1">
-                            <h3 className="font-medium text-gray-900 mb-1">
-                                Selected Model: {selectedModel.name}
-                            </h3>
+                            <div className="flex items-center mb-1">
+                                <h3 className="font-medium text-gray-900">
+                                    Selected Model: {selectedModel.name}
+                                </h3>
+                                {selectedModel.gender && (
+                                    <span className={cn(
+                                        'ml-2 px-2 py-0.5 text-xs rounded-full',
+                                        selectedModel.gender === 'male' ? 'bg-blue-100 text-blue-700' :
+                                            selectedModel.gender === 'female' ? 'bg-pink-100 text-pink-700' :
+                                                'bg-gray-100 text-gray-700'
+                                    )}>
+                                        {selectedModel.gender === 'male' ? 'Male' :
+                                            selectedModel.gender === 'female' ? 'Female' : 'Unisex'}
+                                    </span>
+                                )}
+                            </div>
                             {selectedModel.description && (
                                 <p className="text-sm text-gray-600">
                                     {selectedModel.description}

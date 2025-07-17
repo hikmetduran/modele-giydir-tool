@@ -621,19 +621,22 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
                     </div>
                 )}
 
-                <button
-                    onClick={handleNext}
-                    disabled={!canProceed() || currentStepIndex === steps.length - 1}
-                    className={cn(
-                        'flex items-center space-x-2 px-6 py-3 rounded-lg transition-colors',
-                        !canProceed() || currentStepIndex === steps.length - 1
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-purple-600 text-white hover:bg-purple-700'
-                    )}
-                >
-                    <span>Next</span>
-                    <ArrowRight className="h-4 w-4" />
-                </button>
+                {/* Hide Next button on process and results steps since they auto-proceed */}
+                {appState.currentStep !== 'process' && appState.currentStep !== 'results' && (
+                    <button
+                        onClick={handleNext}
+                        disabled={!canProceed() || currentStepIndex === steps.length - 1}
+                        className={cn(
+                            'flex items-center space-x-2 px-6 py-3 rounded-lg transition-colors',
+                            !canProceed() || currentStepIndex === steps.length - 1
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                : 'bg-purple-600 text-white hover:bg-purple-700'
+                        )}
+                    >
+                        <span>Next</span>
+                        <ArrowRight className="h-4 w-4" />
+                    </button>
+                )}
             </div>
         </div>
     )

@@ -8,7 +8,7 @@ import { join } from 'path'
 config({ path: join(process.cwd(), '.env.local') })
 
 import { fal } from '@fal-ai/client'
-import { supabase, createSupabaseServerClient } from '../lib/supabase'
+import { createSupabaseServerClient } from '../lib/supabase'
 import { readFileSync } from 'fs'
 
 // Configure Fal AI client

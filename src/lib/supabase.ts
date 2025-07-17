@@ -1,9 +1,9 @@
 import { createClient } from '@supabase/supabase-js'
 
 // Get environment variables
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgltcxeloicyvaenvanu.supabase.co'
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnbHRjeGVsb2ljeXZhZW52YW51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE3MzQ3MDQsImV4cCI6MjA2NzMxMDcwNH0.-Cq0rARxpB_MCqrhSwSl-g69Ia9RaFhjehU2uiMDyQA'
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnbHRjeGVsb2ljeXZhZW52YW51Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MTczNDcwNCwiZXhwIjoyMDY3MzEwNzA0fQ.OE0qdCVtU5ZK7T27GcD_IccpVDgZF22uz0PRmG0dvmc'
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // Validate environment variables
 if (!supabaseUrl) {

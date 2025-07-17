@@ -1,0 +1,6 @@
+- [ ] Revoke Supabase secrets and remove from supabase.ts
+- [ ] Demove Debug mode from UI
+- [ ] Fix Auth modal UI colors
+- [ ] Disable next button after AI generation start, auto proceed to results on finish
+- [ ] Search bars color fix
+- [ ] Add male/female filter in Select a Model step

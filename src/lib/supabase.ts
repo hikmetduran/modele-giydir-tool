@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 // Get environment variables
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseServiceKey = process.env.SUPABASE_SECRET_KEY;
 
 // Validate environment variables
 if (!supabaseUrl) {
@@ -13,7 +13,7 @@ if (!supabaseAnonKey) {
     throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY is required')
 }
 if (!supabaseServiceKey) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY is required')
+    throw new Error('SUPABASE_SECRET_KEY is required')
 }
 
 // Browser client for client-side operations

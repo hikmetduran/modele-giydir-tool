@@ -4,7 +4,7 @@
 # Supabase Configuration
 NEXT_PUBLIC_SUPABASE_URL=your-supabase-url-here
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key-here
-SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key-here
+SUPABASE_SECRET_KEY=your-supabase-service-role-key-here
 
 # AI API Configuration
 REPLICATE_API_TOKEN=your-replicate-api-token-here

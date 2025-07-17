@@ -61,7 +61,7 @@ class ModelPhotoGenerator {
     }
 
     private validateEnvironment() {
-        const requiredEnvVars = ['NEXT_PUBLIC_FAL_KEY', 'SUPABASE_SERVICE_ROLE_KEY']
+        const requiredEnvVars = ['NEXT_PUBLIC_FAL_KEY', 'SUPABASE_SECRET_KEY']
         const missing = requiredEnvVars.filter(key => !process.env[key])
 
         if (missing.length > 0) {

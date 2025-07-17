@@ -17,7 +17,7 @@ This script generates AI model photos using the FalAI minimax API and uploads th
 1. **Environment Variables**: Set up the following environment variables in your `.env.local` file:
    ```bash
    NEXT_PUBLIC_FAL_KEY=your_fal_ai_api_key
-   SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+   SUPABASE_SECRET_KEY=your_SUPABASE_SECRET_KEY
    NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
    ```

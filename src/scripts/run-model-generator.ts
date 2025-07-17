@@ -37,7 +37,7 @@ function checkEnvironment() {
 
     const requiredEnvVars = [
         'NEXT_PUBLIC_FAL_KEY',
-        'SUPABASE_SERVICE_ROLE_KEY',
+        'SUPABASE_SECRET_KEY',
         'NEXT_PUBLIC_SUPABASE_URL',
         'NEXT_PUBLIC_SUPABASE_ANON_KEY'
     ]

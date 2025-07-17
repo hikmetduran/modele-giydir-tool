@@ -2,13 +2,13 @@
 
 // Load environment variables from .env.local
 import { config } from 'dotenv'
+import { readFile } from 'fs/promises'
+import { readFileSync, existsSync } from 'fs'
 import { join } from 'path'
+import { createSupabaseServerClient } from '../lib/supabase'
 
 // Load .env.local file
 config({ path: join(process.cwd(), '.env.local') })
-
-import { supabaseServer } from '../lib/supabase'
-import { readFileSync, existsSync } from 'fs'
 
 // Colors for console output
 const colors = {
@@ -96,7 +96,7 @@ async function testSupabaseConnection() {
 
     try {
         // Test database connection
-        const { error } = await supabaseServer
+        const { error } = await createSupabaseServerClient()
             .from('model_photos')
             .select('id')
             .limit(1)
@@ -109,7 +109,7 @@ async function testSupabaseConnection() {
         console.log('  ✅ Database connection successful')
 
         // Test storage bucket
-        const { error: storageError } = await supabaseServer.storage
+        const { error: storageError } = await createSupabaseServerClient().storage
             .from('model-photos')
             .list('', { limit: 1 })
 

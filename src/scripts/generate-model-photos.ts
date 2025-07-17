@@ -8,7 +8,7 @@ import { join } from 'path'
 config({ path: join(process.cwd(), '.env.local') })
 
 import { fal } from '@fal-ai/client'
-import { supabaseServer } from '../lib/supabase'
+import { supabase, createSupabaseServerClient } from '../lib/supabase'
 import { readFileSync } from 'fs'
 
 // Configure Fal AI client
@@ -82,6 +82,7 @@ class ModelPhotoGenerator {
 
     private async checkExistingModel(name: string, description: string): Promise<boolean> {
         try {
+            const supabaseServer = createSupabaseServerClient()
             const { data, error } = await supabaseServer
                 .from('model_photos')
                 .select('id')
@@ -175,6 +176,7 @@ class ModelPhotoGenerator {
 
             console.log(`📤 Uploading ${fileName} to Supabase storage...`)
 
+            const supabaseServer = createSupabaseServerClient()
             const { error } = await supabaseServer.storage
                 .from(this.BUCKET_NAME)
                 .upload(filePath, imageBlob, {
@@ -208,6 +210,7 @@ class ModelPhotoGenerator {
         try {
             console.log(`💾 Saving ${model.name} to database...`)
 
+            const supabaseServer = createSupabaseServerClient()
             const { error } = await supabaseServer
                 .from('model_photos')
                 .insert({

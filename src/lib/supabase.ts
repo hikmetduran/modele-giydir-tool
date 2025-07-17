@@ -3,33 +3,37 @@ import { createClient } from '@supabase/supabase-js'
 // Get environment variables
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const supabaseServiceKey = process.env.SUPABASE_SECRET_KEY;
 
-// Validate environment variables
+// Validate client-side environment variables
 if (!supabaseUrl) {
     throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
 }
 if (!supabaseAnonKey) {
     throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY is required')
 }
-if (!supabaseServiceKey) {
-    throw new Error('SUPABASE_SECRET_KEY is required')
-}
 
 // Browser client for client-side operations
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// Server client for server-side operations
-export const supabaseServer = createClient(
-    supabaseUrl,
-    supabaseServiceKey,
-    {
-        auth: {
-            autoRefreshToken: false,
-            persistSession: false
-        }
+// Server client factory function - only creates client when needed
+export function createSupabaseServerClient() {
+    const supabaseServiceKey = process.env.SUPABASE_SECRET_KEY;
+
+    if (!supabaseServiceKey) {
+        throw new Error('SUPABASE_SECRET_KEY is required for server-side operations')
     }
-)
+
+    return createClient(
+        supabaseUrl!,
+        supabaseServiceKey,
+        {
+            auth: {
+                autoRefreshToken: false,
+                persistSession: false
+            }
+        }
+    )
+}
 
 // Type definitions for our database
 export type Database = {

@@ -169,6 +169,7 @@ async function getTryOnResult(requestId: string): Promise<TryOnResult> {
 async function processTryOnWithUpdates(
     input: TryOnInput,
     supabase: any,
+    supabaseAdmin: any,
     jobId: string,
     userId: string
 ): Promise<TryOnResult> {
@@ -217,7 +218,7 @@ async function processTryOnWithUpdates(
                 break
             } else if (status.status === 'failed') {
                 // Refund credits when processing fails
-                await supabase.rpc('refund_credits', {
+                await supabaseAdmin.rpc('refund_credits', {
                     p_user_id: userId,
                     p_amount: 10,
                     p_description: 'Try-on generation refund - processing failed',
@@ -247,7 +248,7 @@ async function processTryOnWithUpdates(
 
         if (!isCompleted) {
             // Refund credits when request times out
-            await supabase.rpc('refund_credits', {
+            await supabaseAdmin.rpc('refund_credits', {
                 p_user_id: userId,
                 p_amount: 10,
                 p_description: 'Try-on generation refund - request timed out',
@@ -352,7 +353,7 @@ async function processTryOnWithUpdates(
             }
         } else {
             // Refund credits when no result image found
-            await supabase.rpc('refund_credits', {
+            await supabaseAdmin.rpc('refund_credits', {
                 p_user_id: userId,
                 p_amount: 10,
                 p_description: 'Try-on generation refund - no result image found',
@@ -379,7 +380,7 @@ async function processTryOnWithUpdates(
         console.error('❌ Try-on processing failed:', error)
 
         // Refund credits when processing fails with exception
-        await supabase.rpc('refund_credits', {
+        await supabaseAdmin.rpc('refund_credits', {
             p_user_id: userId,
             p_amount: 10,
             p_description: 'Try-on generation refund - processing exception',
@@ -409,36 +410,286 @@ serve(async (req) => {
         return new Response('ok', { headers: corsHeaders })
     }
 
+    let user: any = null
+    let body: TryOnRequest | null = null
+
     try {
+        // Debug: Log all headers
+        console.log('🔍 Debug: Request headers:', {
+            authorization: req.headers.get('Authorization'),
+            'x-client-info': req.headers.get('x-client-info'),
+            apikey: req.headers.get('apikey')
+        })
+
         // Get the authorization header
         const authHeader = req.headers.get('Authorization')
         if (!authHeader) {
-            throw new Error('No authorization header')
+            console.log('❌ No authorization header found')
+            return new Response(
+                JSON.stringify({
+                    success: false,
+                    error: 'Missing authorization header'
+                }),
+                {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    status: 401
+                }
+            )
         }
 
-        // Create Supabase client
+        console.log('🔍 Authorization header found:', authHeader.substring(0, 20) + '...')
+
+        // Validate Bearer token format
+        if (!authHeader.startsWith('Bearer ')) {
+            console.log('❌ Invalid authorization format')
+            return new Response(
+                JSON.stringify({
+                    success: false,
+                    error: 'Invalid authorization format. Expected: Bearer <token>'
+                }),
+                {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    status: 401
+                }
+            )
+        }
+
+        console.log('✅ Bearer token format is valid')
+
+        // Debug: Check environment variables
+        console.log('🔍 Environment variables:', {
+            SUPABASE_URL: Deno.env.get('SUPABASE_URL') ? 'Set' : 'Missing',
+            SUPABASE_ANON_KEY: Deno.env.get('SUPABASE_ANON_KEY') ? 'Set' : 'Missing',
+            SERVICE_ROLE_KEY: Deno.env.get('SERVICE_ROLE_KEY') ? 'Set' : 'Missing'
+        })
+
+        // Create Supabase client with user auth for user-specific operations
         const supabase = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_ANON_KEY') ?? '',
             {
-                global: { headers: { Authorization: authHeader } }
+                global: { headers: { Authorization: authHeader } },
+                auth: {
+                    autoRefreshToken: false,
+                    persistSession: false
+                }
             }
         )
 
-        // Get user from auth
-        const { data: { user }, error: authError } = await supabase.auth.getUser()
-        if (authError || !user) {
-            throw new Error('Unauthorized')
+        // Create Supabase client with service role key for admin operations
+        const supabaseAdmin = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SERVICE_ROLE_KEY') ?? '',
+            {
+                auth: {
+                    autoRefreshToken: false,
+                    persistSession: false
+                }
+            }
+        )
+
+        console.log('✅ Supabase clients created successfully')
+
+        // Try multiple authentication approaches
+        let authUser: any = null
+        let authError: any = null
+
+        // Approach 1: Try with user client
+        console.log('🔍 Approach 1: Attempting to verify JWT with user client...')
+        try {
+            const userAuthResult = await supabase.auth.getUser()
+            if (userAuthResult.data?.user && !userAuthResult.error) {
+                authUser = userAuthResult.data.user
+                console.log('✅ User client authentication successful')
+            } else {
+                console.log('❌ User client authentication failed:', userAuthResult.error)
+                authError = userAuthResult.error
+            }
+        } catch (error) {
+            console.log('❌ User client authentication error:', error)
+            authError = error
         }
 
-        // Parse request body
-        const body: TryOnRequest = await req.json()
-        const { productImageId, modelPhotoId, jobId } = body
+        // Approach 2: Try with admin client to verify JWT
+        if (!authUser) {
+            console.log('🔍 Approach 2: Attempting to verify JWT with admin client...')
+            try {
+                const token = authHeader.replace('Bearer ', '')
+                const adminAuthResult = await supabaseAdmin.auth.getUser(token)
+                if (adminAuthResult.data?.user && !adminAuthResult.error) {
+                    authUser = adminAuthResult.data.user
+                    console.log('✅ Admin client authentication successful')
+                } else {
+                    console.log('❌ Admin client authentication failed:', adminAuthResult.error)
+                    authError = adminAuthResult.error
+                }
+            } catch (error) {
+                console.log('❌ Admin client authentication error:', error)
+                authError = error
+            }
+        }
 
+        // Approach 3: Try manual JWT verification as a fallback
+        if (!authUser) {
+            console.log('🔍 Approach 3: Manual JWT verification fallback...')
+            try {
+                const token = authHeader.replace('Bearer ', '')
+
+                // Create a new client specifically for JWT verification
+                const jwtClient = createClient(
+                    Deno.env.get('SUPABASE_URL') ?? '',
+                    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+                    {
+                        global: { headers: { Authorization: `Bearer ${token}` } },
+                        auth: {
+                            autoRefreshToken: false,
+                            persistSession: false
+                        }
+                    }
+                )
+
+                // Try to fetch user profile as a verification method
+                const { data: profile, error: profileError } = await jwtClient
+                    .from('profiles')
+                    .select('*')
+                    .single()
+
+                if (profile && !profileError) {
+                    // If we can fetch the profile, create a mock user object
+                    authUser = {
+                        id: profile.id,
+                        email: profile.email,
+                        role: 'authenticated'
+                    }
+                    console.log('✅ Manual JWT verification successful via profile lookup')
+                } else {
+                    console.log('❌ Manual JWT verification failed:', profileError)
+                    authError = profileError
+                }
+            } catch (error) {
+                console.log('❌ Manual JWT verification error:', error)
+                authError = error
+            }
+        }
+
+        // Final authentication check
+        if (!authUser) {
+            console.error('❌ All authentication approaches failed:', {
+                message: authError?.message || 'Unknown authentication error',
+                status: authError?.status,
+                code: authError?.code
+            })
+            return new Response(
+                JSON.stringify({
+                    success: false,
+                    error: `Authentication failed: ${authError?.message || 'All authentication methods failed'}`,
+                    details: {
+                        status: authError?.status,
+                        code: authError?.code,
+                        approaches_tried: ['user_client', 'admin_client', 'manual_jwt']
+                    }
+                }),
+                {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    status: 401
+                }
+            )
+        }
+
+        console.log('✅ User authenticated successfully:', {
+            id: authUser.id,
+            email: authUser.email,
+            role: authUser.role
+        })
+
+        user = authUser
+
+        // Parse request body
+        console.log('🔍 Parsing request body...')
+        try {
+            body = await req.json()
+            console.log('✅ Request body parsed successfully:', body)
+        } catch (parseError) {
+            console.error('❌ Failed to parse request body:', parseError)
+            return new Response(
+                JSON.stringify({
+                    success: false,
+                    error: 'Invalid JSON in request body',
+                    details: parseError instanceof Error ? parseError.message : 'Unknown parsing error'
+                }),
+                {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    status: 400
+                }
+            )
+        }
+
+        if (!body) {
+            console.log('❌ Request body is null/undefined')
+            return new Response(
+                JSON.stringify({
+                    success: false,
+                    error: 'Request body is required'
+                }),
+                {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    status: 400
+                }
+            )
+        }
+
+        const { productImageId, modelPhotoId, jobId } = body
+        console.log('🔍 Extracted fields:', { productImageId, modelPhotoId, jobId })
+
+        // Validate required fields
+        const missingFields: string[] = []
+        if (!productImageId) missingFields.push('productImageId')
+        if (!modelPhotoId) missingFields.push('modelPhotoId')
+        if (!jobId) missingFields.push('jobId')
+
+        if (missingFields.length > 0) {
+            console.log('❌ Missing required fields:', missingFields)
+            return new Response(
+                JSON.stringify({
+                    success: false,
+                    error: `Missing required fields: ${missingFields.join(', ')}`,
+                    received: { productImageId, modelPhotoId, jobId }
+                }),
+                {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    status: 400
+                }
+            )
+        }
+
+        // Validate field formats (basic UUID validation)
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+        const invalidFields: string[] = []
+        if (!uuidRegex.test(productImageId)) invalidFields.push('productImageId')
+        if (!uuidRegex.test(modelPhotoId)) invalidFields.push('modelPhotoId')
+        if (!uuidRegex.test(jobId)) invalidFields.push('jobId')
+
+        if (invalidFields.length > 0) {
+            console.log('❌ Invalid field formats:', invalidFields)
+            return new Response(
+                JSON.stringify({
+                    success: false,
+                    error: `Invalid UUID format for fields: ${invalidFields.join(', ')}`,
+                    received: { productImageId, modelPhotoId, jobId }
+                }),
+                {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    status: 400
+                }
+            )
+        }
+
+        console.log('✅ All field validation passed')
         console.log('🚀 Processing try-on request:', { productImageId, modelPhotoId, jobId, userId: user.id })
 
-        // Check user's credit balance and deduct credits before processing
-        const { data: deductResult, error: deductError } = await supabase.rpc('deduct_credits', {
+        // Check user's credit balance and deduct credits before processing (using admin client)
+        console.log('🔍 Attempting to deduct credits...')
+        const { data: deductResult, error: deductError } = await supabaseAdmin.rpc('deduct_credits', {
             p_user_id: user.id,
             p_amount: 10,
             p_description: 'Try-on generation',
@@ -447,17 +698,38 @@ serve(async (req) => {
 
         if (deductError) {
             console.error('❌ Error deducting credits:', deductError)
-            throw new Error('Failed to deduct credits')
+            return new Response(
+                JSON.stringify({
+                    success: false,
+                    error: 'Credit deduction failed',
+                    details: deductError.message || 'Unknown credit error'
+                }),
+                {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    status: 400
+                }
+            )
         }
 
         if (!deductResult) {
             console.error('❌ Insufficient credits for user:', user.id)
-            throw new Error('Insufficient credits')
+            return new Response(
+                JSON.stringify({
+                    success: false,
+                    error: 'Insufficient credits',
+                    details: 'You need at least 10 credits to process a try-on request'
+                }),
+                {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    status: 400
+                }
+            )
         }
 
         console.log('✅ Credits deducted successfully for user:', user.id)
 
-        // Get product image details
+        // Get product image details (using user client)
+        console.log('🔍 Looking up product image...')
         const { data: productImage, error: productError } = await supabase
             .from('product_images')
             .select('*')
@@ -466,17 +738,31 @@ serve(async (req) => {
             .single()
 
         if (productError || !productImage) {
-            // Refund credits if product image not found
-            await supabase.rpc('refund_credits', {
+            console.error('❌ Product image not found:', { productImageId, userId: user.id, error: productError })
+            // Refund credits if product image not found (using admin client)
+            await supabaseAdmin.rpc('refund_credits', {
                 p_user_id: user.id,
                 p_amount: 10,
                 p_description: 'Try-on generation refund - product image not found',
                 p_try_on_result_id: jobId
             })
-            throw new Error('Product image not found')
+            return new Response(
+                JSON.stringify({
+                    success: false,
+                    error: 'Product image not found',
+                    details: `Product image with ID ${productImageId} not found for user ${user.id}`
+                }),
+                {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    status: 400
+                }
+            )
         }
 
-        // Get model photo details
+        console.log('✅ Product image found:', { id: productImage.id, filename: productImage.filename })
+
+        // Get model photo details (using user client)
+        console.log('🔍 Looking up model photo...')
         const { data: modelPhoto, error: modelError } = await supabase
             .from('model_photos')
             .select('*')
@@ -484,15 +770,28 @@ serve(async (req) => {
             .single()
 
         if (modelError || !modelPhoto) {
-            // Refund credits if model photo not found
-            await supabase.rpc('refund_credits', {
+            console.error('❌ Model photo not found:', { modelPhotoId, error: modelError })
+            // Refund credits if model photo not found (using admin client)
+            await supabaseAdmin.rpc('refund_credits', {
                 p_user_id: user.id,
                 p_amount: 10,
                 p_description: 'Try-on generation refund - model photo not found',
                 p_try_on_result_id: jobId
             })
-            throw new Error('Model photo not found')
+            return new Response(
+                JSON.stringify({
+                    success: false,
+                    error: 'Model photo not found',
+                    details: `Model photo with ID ${modelPhotoId} not found`
+                }),
+                {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    status: 400
+                }
+            )
         }
+
+        console.log('✅ Model photo found:', { id: modelPhoto.id, name: modelPhoto.name })
 
         // Process the try-on request
         const result = await processTryOnWithUpdates(
@@ -501,6 +800,7 @@ serve(async (req) => {
                 garmentImageUrl: productImage.image_url
             },
             supabase,
+            supabaseAdmin,
             jobId,
             user.id
         )
@@ -518,7 +818,13 @@ serve(async (req) => {
         // Try to refund credits if we have user and jobId
         if (user?.id && body?.jobId) {
             try {
-                await supabase.rpc('refund_credits', {
+                // Create admin client for refund
+                const supabaseAdmin = createClient(
+                    Deno.env.get('SUPABASE_URL') ?? '',
+                    Deno.env.get('SERVICE_ROLE_KEY') ?? ''
+                )
+
+                await supabaseAdmin.rpc('refund_credits', {
                     p_user_id: user.id,
                     p_amount: 10,
                     p_description: 'Try-on generation refund - edge function error',

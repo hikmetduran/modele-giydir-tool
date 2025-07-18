@@ -39,7 +39,7 @@ function checkEnvironment() {
         'FAL_API_KEY',
         'SUPABASE_SERVICE_ROLE_KEY',
         'NEXT_PUBLIC_SUPABASE_URL',
-        'NEXT_PUBLIC_SUPABASE_ANON_KEY'
+        'SUPABASE_PUBLISHABLE_KEY'
     ]
 
     const missing = requiredEnvVars.filter(key => !process.env[key])

@@ -2,30 +2,30 @@ import { createClient } from '@supabase/supabase-js'
 
 // Get environment variables
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
 
 // Validate client-side environment variables
 if (!supabaseUrl) {
     throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
 }
-if (!supabaseAnonKey) {
-    throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY is required')
+if (!supabasePublishableKey) {
+    throw new Error('SUPABASE_PUBLISHABLE_KEY or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY is required')
 }
 
 // Browser client for client-side operations
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl, supabasePublishableKey)
 
 // Server client factory function - only creates client when needed
 export function createSupabaseServerClient() {
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    if (!supabaseServiceKey) {
-        throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for server-side operations')
+    if (!supabaseSecretKey) {
+        throw new Error('SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY is required for server-side operations')
     }
 
     return createClient(
         supabaseUrl!,
-        supabaseServiceKey,
+        supabaseSecretKey,
         {
             auth: {
                 autoRefreshToken: false,
@@ -340,4 +340,4 @@ export async function getCreditTransactions(userId: string) {
         .order('created_at', { ascending: false })
 
     return { data, error }
-} 
+}

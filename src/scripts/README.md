@@ -19,7 +19,7 @@ This script generates AI model photos using the FalAI minimax API and uploads th
    FAL_API_KEY=your_fal_ai_api_key
    SUPABASE_SERVICE_ROLE_KEY=your_SUPABASE_SERVICE_ROLE_KEY
    NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   SUPABASE_PUBLISHABLE_KEY=your_supabase_anon_key
    ```
 
 2. **Model Prompts File**: Ensure `resources/model-prompts.json` exists in the project root with the following structure:

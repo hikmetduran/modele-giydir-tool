@@ -460,13 +460,13 @@ serve(async (req) => {
         console.log('🔍 Environment variables:', {
             SUPABASE_URL: Deno.env.get('SUPABASE_URL') ? 'Set' : 'Missing',
             SUPABASE_ANON_KEY: Deno.env.get('SUPABASE_ANON_KEY') ? 'Set' : 'Missing',
-            SERVICE_ROLE_KEY: Deno.env.get('SERVICE_ROLE_KEY') ? 'Set' : 'Missing'
+            SUPABASE_SERVICE_ROLE_KEY: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ? 'Set' : 'Missing'
         })
 
         // Create Supabase client with service role key for admin operations
         const supabaseAdmin = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SERVICE_ROLE_KEY') ?? '',
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
             {
                 auth: {
                     autoRefreshToken: false,
@@ -475,7 +475,8 @@ serve(async (req) => {
             }
         )
 
-        // Create Supabase client with user auth for user-specific operations
+        // Create Supabase client with anon key for user operations
+        // Note: For new API key system, we don't pass the key in headers
         const supabase = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -490,7 +491,7 @@ serve(async (req) => {
 
         console.log('✅ Supabase clients created successfully')
 
-        // New authentication approach for new API key system
+        // Authentication with new API key system
         let authUser: any = null
         let authError: any = null
 

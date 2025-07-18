@@ -38,8 +38,8 @@ If you encounter 401 errors:
 
 ## Environment Variables Required
 - `SUPABASE_URL`: Your Supabase project URL
-- `SUPABASE_ANON_KEY`: Your Supabase anonymous key (publishable key)
-- `SERVICE_ROLE_KEY`: Your Supabase service role key (secret key)
+- `SUPABASE_PUBLISHABLE_KEY`: Your Supabase publishable key (new API key system)
+- `SUPABASE_SECRET_KEY`: Your Supabase secret key (new API key system)
 - `FAL_API_KEY`: Your Fal.ai API key
 
 ## Function Features

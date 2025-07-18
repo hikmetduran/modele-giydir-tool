@@ -13,7 +13,7 @@ import { readFileSync } from 'fs'
 
 // Configure Fal AI client
 fal.config({
-    credentials: process.env.NEXT_PUBLIC_FAL_KEY
+    credentials: process.env.FAL_API_KEY
 })
 
 interface ModelPrompt {
@@ -61,7 +61,7 @@ class ModelPhotoGenerator {
     }
 
     private validateEnvironment() {
-        const requiredEnvVars = ['NEXT_PUBLIC_FAL_KEY', 'SUPABASE_SECRET_KEY']
+        const requiredEnvVars = ['FAL_API_KEY', 'SUPABASE_SERVICE_ROLE_KEY']
         const missing = requiredEnvVars.filter(key => !process.env[key])
 
         if (missing.length > 0) {
@@ -366,4 +366,4 @@ if (require.main === module) {
     main()
 }
 
-export { ModelPhotoGenerator } 
+export { ModelPhotoGenerator }

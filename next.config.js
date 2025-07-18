@@ -26,7 +26,7 @@ const nextConfig = {
 
     // Environment variables
     env: {
-        NEXT_PUBLIC_FAL_KEY: process.env.NEXT_PUBLIC_FAL_KEY,
+        FAL_API_KEY: process.env.FAL_API_KEY,
     },
 
     // Output configuration

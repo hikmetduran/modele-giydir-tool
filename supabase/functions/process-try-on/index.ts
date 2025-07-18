@@ -16,7 +16,7 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const FAL_API_KEY = Deno.env.get('FAL_KEY')
+const FAL_API_KEY = Deno.env.get('FAL_API_KEY')
 
 // Configure Fal.ai client
 if (FAL_API_KEY) {
@@ -24,7 +24,7 @@ if (FAL_API_KEY) {
         credentials: FAL_API_KEY
     })
 } else {
-    console.error('❌ FAL_KEY environment variable not set')
+    console.error('❌ FAL_API_KEY environment variable not set')
 }
 
 interface TryOnRequest {
@@ -463,6 +463,18 @@ serve(async (req) => {
             SERVICE_ROLE_KEY: Deno.env.get('SERVICE_ROLE_KEY') ? 'Set' : 'Missing'
         })
 
+        // Create Supabase client with service role key for admin operations
+        const supabaseAdmin = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SERVICE_ROLE_KEY') ?? '',
+            {
+                auth: {
+                    autoRefreshToken: false,
+                    persistSession: false
+                }
+            }
+        )
+
         // Create Supabase client with user auth for user-specific operations
         const supabase = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
@@ -476,117 +488,46 @@ serve(async (req) => {
             }
         )
 
-        // Create Supabase client with service role key for admin operations
-        const supabaseAdmin = createClient(
-            Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SERVICE_ROLE_KEY') ?? '',
-            {
-                auth: {
-                    autoRefreshToken: false,
-                    persistSession: false
-                }
-            }
-        )
-
         console.log('✅ Supabase clients created successfully')
 
-        // Try multiple authentication approaches
+        // New authentication approach for new API key system
         let authUser: any = null
         let authError: any = null
 
-        // Approach 1: Try with user client
-        console.log('🔍 Approach 1: Attempting to verify JWT with user client...')
+        console.log('🔍 Attempting authentication with new API key system...')
         try {
-            const userAuthResult = await supabase.auth.getUser()
-            if (userAuthResult.data?.user && !userAuthResult.error) {
-                authUser = userAuthResult.data.user
-                console.log('✅ User client authentication successful')
+            const token = authHeader.replace('Bearer ', '')
+            
+            // Use the service role key to verify the JWT directly
+            const authResult = await supabaseAdmin.auth.getUser(token)
+            
+            if (authResult.data?.user && !authResult.error) {
+                authUser = authResult.data.user
+                console.log('✅ Authentication successful with new API key system')
             } else {
-                console.log('❌ User client authentication failed:', userAuthResult.error)
-                authError = userAuthResult.error
+                authError = authResult.error
+                console.log('❌ Authentication failed:', authResult.error)
             }
         } catch (error) {
-            console.log('❌ User client authentication error:', error)
+            console.log('❌ Authentication error:', error)
             authError = error
-        }
-
-        // Approach 2: Try with admin client to verify JWT
-        if (!authUser) {
-            console.log('🔍 Approach 2: Attempting to verify JWT with admin client...')
-            try {
-                const token = authHeader.replace('Bearer ', '')
-                const adminAuthResult = await supabaseAdmin.auth.getUser(token)
-                if (adminAuthResult.data?.user && !adminAuthResult.error) {
-                    authUser = adminAuthResult.data.user
-                    console.log('✅ Admin client authentication successful')
-                } else {
-                    console.log('❌ Admin client authentication failed:', adminAuthResult.error)
-                    authError = adminAuthResult.error
-                }
-            } catch (error) {
-                console.log('❌ Admin client authentication error:', error)
-                authError = error
-            }
-        }
-
-        // Approach 3: Try manual JWT verification as a fallback
-        if (!authUser) {
-            console.log('🔍 Approach 3: Manual JWT verification fallback...')
-            try {
-                const token = authHeader.replace('Bearer ', '')
-
-                // Create a new client specifically for JWT verification
-                const jwtClient = createClient(
-                    Deno.env.get('SUPABASE_URL') ?? '',
-                    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-                    {
-                        global: { headers: { Authorization: `Bearer ${token}` } },
-                        auth: {
-                            autoRefreshToken: false,
-                            persistSession: false
-                        }
-                    }
-                )
-
-                // Try to fetch user profile as a verification method
-                const { data: profile, error: profileError } = await jwtClient
-                    .from('profiles')
-                    .select('*')
-                    .single()
-
-                if (profile && !profileError) {
-                    // If we can fetch the profile, create a mock user object
-                    authUser = {
-                        id: profile.id,
-                        email: profile.email,
-                        role: 'authenticated'
-                    }
-                    console.log('✅ Manual JWT verification successful via profile lookup')
-                } else {
-                    console.log('❌ Manual JWT verification failed:', profileError)
-                    authError = profileError
-                }
-            } catch (error) {
-                console.log('❌ Manual JWT verification error:', error)
-                authError = error
-            }
         }
 
         // Final authentication check
         if (!authUser) {
-            console.error('❌ All authentication approaches failed:', {
-                message: authError?.message || 'Unknown authentication error',
+            console.error('❌ Authentication failed:', {
+                message: authError?.message || 'Authentication failed - please check your session',
                 status: authError?.status,
                 code: authError?.code
             })
             return new Response(
                 JSON.stringify({
                     success: false,
-                    error: `Authentication failed: ${authError?.message || 'All authentication methods failed'}`,
+                    error: `Authentication failed: ${authError?.message || 'Please ensure you are logged in'}`,
                     details: {
                         status: authError?.status,
                         code: authError?.code,
-                        approaches_tried: ['user_client', 'admin_client', 'manual_jwt']
+                        message: 'This function requires a valid user session. Please log in again.'
                     }
                 }),
                 {
@@ -821,7 +762,7 @@ serve(async (req) => {
                 // Create admin client for refund
                 const supabaseAdmin = createClient(
                     Deno.env.get('SUPABASE_URL') ?? '',
-                    Deno.env.get('SERVICE_ROLE_KEY') ?? ''
+                    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
                 )
 
                 await supabaseAdmin.rpc('refund_credits', {
@@ -846,4 +787,4 @@ serve(async (req) => {
             }
         )
     }
-}) 
+})

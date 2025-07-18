@@ -17,10 +17,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // Server client factory function - only creates client when needed
 export function createSupabaseServerClient() {
-    const supabaseServiceKey = process.env.SUPABASE_SECRET_KEY;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseServiceKey) {
-        throw new Error('SUPABASE_SECRET_KEY is required for server-side operations')
+        throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for server-side operations')
     }
 
     return createClient(

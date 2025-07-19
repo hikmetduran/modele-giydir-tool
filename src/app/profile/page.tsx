@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/components/auth/AuthProvider'
-import { supabase } from '@/lib/supabase'
+import { databases, COLLECTIONS } from '@/lib/appwrite'
 import { User, Mail, Calendar, Edit2, Save, X, Coins, TrendingUp, TrendingDown, RefreshCw } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useWallet } from '@/lib/hooks/useWallet'
+import { Query } from 'appwrite'
 
 interface ProfileData {
     id: string
@@ -14,6 +15,15 @@ interface ProfileData {
     avatar_url: string | null
     created_at: string
     updated_at: string
+}
+
+interface Transaction {
+    id: string
+    user_id: string
+    amount: number
+    transaction_type: 'credit' | 'debit' | 'try_on_generation' | 'refund'
+    description: string
+    created_at: string
 }
 
 export default function ProfilePage() {
@@ -39,49 +49,58 @@ export default function ProfilePage() {
 
     const loadProfile = useCallback(async () => {
         try {
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', user!.id)
-                .single()
+            if (!user) return
 
-            if (error) {
-                // If profile doesn't exist, create it
-                if (error.code === 'PGRST116') {
-                    console.log('Profile not found, creating one...')
-                    const { data: newProfile, error: createError } = await supabase
-                        .from('profiles')
-                        .insert([
-                            {
-                                id: user!.id,
-                                email: user!.email!,
-                                full_name: user!.user_metadata?.full_name || null,
-                                avatar_url: user!.user_metadata?.avatar_url || null,
-                            },
-                        ])
-                        .select()
-                        .single()
+            // Try to get existing profile
+            const response = await databases.listDocuments(
+                'modele-giydir-db',
+                COLLECTIONS.profiles,
+                [Query.equal('user_id', user.$id)]
+            )
 
-                    if (createError) {
-                        console.error('Error creating profile:', createError)
-                        setError('Failed to create profile')
-                        return
-                    }
+            let profileData: ProfileData | null = null
 
-                    setProfile(newProfile)
-                    setFormData({
-                        full_name: newProfile.full_name || ''
-                    })
-                } else {
-                    console.error('Error loading profile:', error)
-                    setError('Failed to load profile')
+            if (response.documents.length > 0) {
+                // Profile exists
+                const doc = response.documents[0]
+                profileData = {
+                    id: doc.$id,
+                    email: doc.email || user.email || '',
+                    full_name: doc.full_name || null,
+                    avatar_url: doc.avatar_url || null,
+                    created_at: doc.$createdAt || new Date().toISOString(),
+                    updated_at: doc.$updatedAt || new Date().toISOString()
                 }
-                return
+            } else {
+                // Create new profile
+                console.log('Profile not found, creating one...')
+                const newProfile = await databases.createDocument(
+                    'modele-giydir-db',
+                    COLLECTIONS.profiles,
+                    'unique()',
+                    {
+                        user_id: user.$id,
+                        email: user.email || '',
+                        full_name: user.name || null,
+                        avatar_url: user.prefs?.avatar_url || null,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    }
+                )
+
+                profileData = {
+                    id: newProfile.$id,
+                    email: newProfile.email || user.email || '',
+                    full_name: newProfile.full_name || null,
+                    avatar_url: newProfile.avatar_url || null,
+                    created_at: newProfile.$createdAt || new Date().toISOString(),
+                    updated_at: newProfile.$updatedAt || new Date().toISOString()
+                }
             }
 
-            setProfile(data)
+            setProfile(profileData)
             setFormData({
-                full_name: data.full_name || ''
+                full_name: profileData.full_name || ''
             })
         } catch (err: unknown) {
             console.error('Error loading profile:', err)
@@ -99,25 +118,28 @@ export default function ProfilePage() {
     }, [user, loadProfile])
 
     const handleSave = async () => {
-        if (!user) return
+        if (!user || !profile) return
 
         setSaving(true)
         setError('')
         setSuccess('')
 
         try {
-            const { data, error } = await supabase
-                .from('profiles')
-                .update({
-                    full_name: formData.full_name || null
-                })
-                .eq('id', user.id)
-                .select()
-                .single()
+            const updatedProfile = await databases.updateDocument(
+                'modele-giydir-db',
+                COLLECTIONS.profiles,
+                profile.id,
+                {
+                    full_name: formData.full_name || null,
+                    updated_at: new Date().toISOString()
+                }
+            )
 
-            if (error) throw error
-
-            setProfile(data)
+            setProfile({
+                ...profile,
+                full_name: updatedProfile.full_name || null,
+                updated_at: updatedProfile.$updatedAt || new Date().toISOString()
+            })
             setEditing(false)
             setSuccess('Profile updated successfully!')
 
@@ -295,7 +317,7 @@ export default function ProfilePage() {
                                         {transactions.slice(0, 20).map((transaction) => (
                                             <div key={transaction.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                                                 <div className="flex items-center space-x-3">
-                                                    {transaction.transaction_type === 'debit' ? (
+                                                    {(transaction.transaction_type === 'debit' || transaction.transaction_type === 'try_on_generation') ? (
                                                         <TrendingDown className="h-4 w-4 text-red-500" />
                                                     ) : (
                                                         <TrendingUp className="h-4 w-4 text-green-500" />
@@ -309,11 +331,11 @@ export default function ProfilePage() {
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <div className={`text-sm font-medium ${transaction.transaction_type === 'debit'
+                                                <div className={`text-sm font-medium ${(transaction.transaction_type === 'debit' || transaction.transaction_type === 'try_on_generation')
                                                     ? 'text-red-600'
                                                     : 'text-green-600'
                                                     }`}>
-                                                    {transaction.transaction_type === 'debit' ? '-' : '+'}
+                                                    {(transaction.transaction_type === 'debit' || transaction.transaction_type === 'try_on_generation') ? '-' : '+'}
                                                     {Math.abs(transaction.amount)}
                                                 </div>
                                             </div>
@@ -351,4 +373,4 @@ export default function ProfilePage() {
             </div>
         </div>
     )
-} 
+}

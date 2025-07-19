@@ -8,7 +8,8 @@ import { Upload, LogIn, LogOut, User, Image as ImageIcon, Coins, RefreshCw } fro
 import { useAuth } from '@/components/auth/AuthProvider'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import AuthModal from '@/components/auth/AuthModal'
-import { supabase } from '@/lib/supabase'
+import { account, databases, COLLECTIONS } from '@/lib/appwrite'
+import { Query } from 'appwrite'
 import { useWallet } from '@/lib/hooks/useWallet'
 
 const navigation = [
@@ -18,16 +19,22 @@ const navigation = [
 
 export default function Header() {
     const pathname = usePathname()
-    const { user, loading, signOut } = useAuth()
+    const { user, userId, loading, signOut } = useAuth()
     const { wallet, loading: walletLoading, refreshWallet } = useWallet()
     const [authModalOpen, setAuthModalOpen] = useState(false)
     const [userMenuOpen, setUserMenuOpen] = useState(false)
-    const [userProfile, setUserProfile] = useState<{ full_name?: string | null } | null>(null)
+    const [userProfile, setUserProfile] = useState<any>(null)
     const userMenuRef = useRef<HTMLDivElement>(null)
 
     const handleSignOut = async () => {
-        await signOut()
-        setUserMenuOpen(false)
+        try {
+            await account.deleteSession('current')
+            signOut()
+            setUserMenuOpen(false)
+        } catch (error) {
+            console.error('Sign out error:', error)
+            signOut() // Fallback
+        }
     }
 
     const getInitials = (name: string | null) => {
@@ -42,57 +49,48 @@ export default function Header() {
 
     // Load user profile function
     const loadProfile = useCallback(async () => {
-        if (!user) return
+        if (!userId) return
 
         try {
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', user.id)
-                .single()
+            // Get user profile from Appwrite database
+            const response = await databases.listDocuments(
+                'modele-giydir-db',
+                COLLECTIONS.profiles,
+                [Query.equal('userId', userId)]
+            )
 
-            if (error) {
-                // If profile doesn't exist, create it
-                if (error.code === 'PGRST116') {
-                    console.log('Profile not found, creating one...')
-                    const { data: newProfile, error: createError } = await supabase
-                        .from('profiles')
-                        .insert([
-                            {
-                                id: user.id,
-                                email: user.email!,
-                                full_name: user.user_metadata?.full_name || null,
-                                avatar_url: user.user_metadata?.avatar_url || null,
-                            },
-                        ])
-                        .select()
-                        .single()
-
-                    if (createError) {
-                        console.error('Error creating profile:', createError)
-                        return
+            if (response.documents.length > 0) {
+                setUserProfile(response.documents[0])
+            } else {
+                // Create profile if it doesn't exist
+                const newProfile = await databases.createDocument(
+                    'modele-giydir-db',
+                    COLLECTIONS.profiles,
+                    'unique()',
+                    {
+                        user_id: userId,
+                        email: user?.email,
+                        full_name: (user as any)?.name || null,
+                        avatar_url: null,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
                     }
-                    setUserProfile(newProfile)
-                } else {
-                    console.error('Error loading profile:', error)
-                }
-                return
+                )
+                setUserProfile(newProfile)
             }
-
-            setUserProfile(data)
         } catch (err) {
             console.error('Error loading profile:', err)
         }
-    }, [user])
+    }, [userId, user])
 
     // Load user profile when user is authenticated
     useEffect(() => {
-        if (user) {
+        if (userId) {
             loadProfile()
         } else {
             setUserProfile(null)
         }
-    }, [user, loadProfile])
+    }, [userId, loadProfile])
 
     // Listen for profile updates
     useEffect(() => {
@@ -160,7 +158,7 @@ export default function Header() {
 
                     <div className="flex items-center space-x-4">
                         {/* Credits Display */}
-                        {user && (
+                        {userId && (
                             <div className="flex items-center space-x-2 px-3 py-1 bg-gradient-to-r from-yellow-100 to-orange-100 rounded-full border border-yellow-200">
                                 <Coins className="h-4 w-4 text-yellow-600" />
                                 <span className="text-sm font-medium text-yellow-800">
@@ -179,17 +177,17 @@ export default function Header() {
 
                         {loading ? (
                             <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse"></div>
-                        ) : user ? (
+                        ) : userId ? (
                             <div className="relative" ref={userMenuRef}>
                                 <button
                                     onClick={() => setUserMenuOpen(!userMenuOpen)}
                                     className="flex items-center space-x-2 p-2 rounded-md hover:bg-gray-100 transition-colors"
                                 >
                                     <div className="h-8 w-8 rounded-full bg-purple-600 flex items-center justify-center text-white text-sm font-bold">
-                                        {getInitials(userProfile?.full_name || user.user_metadata?.full_name)}
+                                        {getInitials(userProfile?.full_name || (user as any)?.name)}
                                     </div>
                                     <span className="text-sm font-medium text-gray-700">
-                                        {userProfile?.full_name || user.user_metadata?.full_name || user.email?.split('@')[0]}
+                                        {userProfile?.full_name || (user as any)?.name || user?.email?.split('@')[0]}
                                     </span>
                                 </button>
 
@@ -197,8 +195,8 @@ export default function Header() {
                                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
                                         <div className="py-1">
                                             <div className="px-4 py-2 text-sm text-gray-900 border-b">
-                                                <div className="font-medium">{userProfile?.full_name || user.user_metadata?.full_name || 'User'}</div>
-                                                <div className="text-gray-500">{user.email}</div>
+                                                <div className="font-medium">{userProfile?.full_name || (user as any)?.name || 'User'}</div>
+                                                <div className="text-gray-500">{user?.email}</div>
                                             </div>
                                             <Link
                                                 href="/profile"
@@ -238,4 +236,4 @@ export default function Header() {
             />
         </header>
     )
-} 
+}

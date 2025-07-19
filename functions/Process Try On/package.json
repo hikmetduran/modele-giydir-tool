@@ -1,0 +1,9 @@
+{
+  "name": "process-try-on",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "node-appwrite": "^14.0.0",
+    "@fal-ai/client": "^1.0.0"
+  }
+}

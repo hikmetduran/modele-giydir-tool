@@ -24,7 +24,7 @@ import {
     testDatabaseConnection,
     getUserProductImages,
     deleteProductImage
-} from '@/lib/supabase-storage'
+} from '@/lib/appwrite-storage'
 import { useAuth } from '@/components/auth/AuthProvider'
 
 interface FileUploadProps {
@@ -53,7 +53,7 @@ export default function FileUpload({
     maxSize = 10 * 1024 * 1024, // 10MB
     className
 }: FileUploadProps) {
-    const { user } = useAuth()
+    const { user, userId } = useAuth()
     const [selectedImages, setSelectedImages] = useState<SelectableImage[]>([])
     const [storedImages, setStoredImages] = useState<StoredImage[]>([])
     const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([])
@@ -67,11 +67,11 @@ export default function FileUpload({
 
     // Load stored images when user signs in
     useEffect(() => {
-        if (user) {
+        if (userId) {
             loadStoredImages()
             testConnections()
         }
-    }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
 
     // Sync selected images with parent component
     useEffect(() => {
@@ -102,11 +102,11 @@ export default function FileUpload({
     }
 
     const loadStoredImages = async () => {
-        if (!user) return
+        if (!userId) return
 
         setIsLoadingStored(true)
         try {
-            const images = await getUserProductImages(user.id)
+            const images = await getUserProductImages(userId)
             setStoredImages(images)
         } catch (error) {
             console.error('❌ Failed to load stored images:', error)
@@ -152,10 +152,10 @@ export default function FileUpload({
     }
 
     const deleteStoredImage = async (imageId: string) => {
-        if (!user) return
+        if (!userId) return
 
         try {
-            const result = await deleteProductImage(imageId, user.id)
+            const result = await deleteProductImage(imageId, userId)
             if (result.success) {
                 // Remove from stored images
                 setStoredImages(prev => prev.filter(img => img.id !== imageId))
@@ -184,7 +184,7 @@ export default function FileUpload({
                 f.id === fileId ? { ...f, progress: 25, stage: 'Uploading to cloud storage...' } : f
             ))
 
-            const uploadPromise = uploadProductImage(uploadingFile.file, user!.id)
+            const uploadPromise = uploadProductImage(uploadingFile.file, userId!)
             const result = await Promise.race([
                 uploadPromise,
                 new Promise<never>((_, reject) =>
@@ -237,7 +237,7 @@ export default function FileUpload({
                 mime_type: uploadingFile.file.type,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
-                user_id: user!.id
+                user_id: userId!
             }
 
             setStoredImages(prev => [newStoredImage, ...prev])
@@ -264,7 +264,7 @@ export default function FileUpload({
     const onDrop = useCallback(async (acceptedFiles: File[], rejectedFiles: FileRejection[]) => {
         setError(null)
 
-        if (!user) {
+        if (!userId) {
             setError('Please sign in to upload images')
             return
         }
@@ -319,7 +319,7 @@ export default function FileUpload({
         } finally {
             setIsProcessing(false)
         }
-    }, [selectedImages, uploadingFiles, maxFiles, maxSize, user]) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [selectedImages, uploadingFiles, maxFiles, maxSize, userId]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,
@@ -330,7 +330,7 @@ export default function FileUpload({
         },
         maxFiles,
         maxSize,
-        disabled: isProcessing || selectedImages.length >= maxFiles || !user,
+        disabled: isProcessing || selectedImages.length >= maxFiles || !userId,
         noClick: true // We'll handle clicks manually
     })
 
@@ -369,7 +369,7 @@ export default function FileUpload({
         input.click()
     }
 
-    if (!user) {
+    if (!userId) {
         return (
             <div className={cn('w-full', className)}>
                 <div className="text-center py-12">
@@ -704,4 +704,4 @@ export default function FileUpload({
             )}
         </div>
     )
-} 
+}

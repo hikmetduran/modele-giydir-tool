@@ -1,0 +1,5 @@
+{
+    "supabase.functions.jwtVerification": false,
+    "supabase.functions.legacyJwt": false,
+    "description": "This function handles JWT verification internally with fallback mechanisms. Legacy JWT verification should be DISABLED in the Supabase dashboard."
+}

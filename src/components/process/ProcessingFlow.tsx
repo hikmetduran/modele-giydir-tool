@@ -7,8 +7,8 @@ import { SelectableImage, ModelImage, ProcessingJob, AppState } from '@/lib/type
 import { generateId } from '@/lib/utils'
 import { saveAppState, getAppState } from '@/lib/storage'
 import { useAuth } from '@/components/auth/AuthProvider'
-import { processTryOnWithEdgeFunction } from '@/lib/edge-functions'
-import { createTryOnResult, getTryOnResultStatus } from '@/lib/supabase-storage'
+import { processTryOnWithEdgeFunction } from '@/lib/appwrite-edge-functions'
+import { createTryOnResult, getTryOnResultStatus } from '@/lib/appwrite-storage'
 import { useWallet } from '@/lib/hooks/useWallet'
 import FileUpload from '@/components/upload/FileUpload'
 import ModelSelection from '@/components/model/ModelSelection'
@@ -18,7 +18,7 @@ interface ProcessingFlowProps {
 }
 
 export default function ProcessingFlow({ className }: ProcessingFlowProps) {
-    const { user } = useAuth()
+    const { user, userId } = useAuth()
     const { wallet, refreshWallet } = useWallet()
     const [appState, setAppState] = useState<AppState>({
         currentStep: 'upload',
@@ -125,14 +125,14 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
     }
 
     const processWithAI = async (job: ProcessingJob) => {
-        if (!user) return
+        if (!userId) return
 
         try {
             console.log('🚀 Starting AI processing for job:', job.id)
 
             // Create a try-on result record in the database
             const createResult = await createTryOnResult(
-                user.id,
+                userId,
                 job.productImage.id,
                 job.modelImage.id
             )
@@ -225,14 +225,14 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
         processingJobId: string,
         updateJob: (updates: Partial<ProcessingJob>) => void
     ) => {
-        if (!user) return
+        if (!userId) return
 
         let attempts = 0
         const maxAttempts = 120 // 10 minutes max (5 second intervals)
 
         while (attempts < maxAttempts) {
             try {
-                const statusResult = await getTryOnResultStatus(jobId, user.id)
+                const statusResult = await getTryOnResultStatus(jobId, userId)
 
                 if (statusResult.success && statusResult.data) {
                     const { status, result_image_url, error_message } = statusResult.data
@@ -496,7 +496,7 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
                             <Download className="mx-auto h-16 w-16 text-purple-600 mb-4" />
                             <h2 className="text-2xl font-semibold text-gray-900 mb-2">Your Results</h2>
                             <p className="text-gray-600 mb-6">
-                                Here&apos;s how your products look on the selected model
+                                Here's how your products look on the selected model
                             </p>
 
                             <div className="flex justify-center space-x-4 mb-8">
@@ -640,4 +640,4 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
             </div>
         </div>
     )
-} 
+}

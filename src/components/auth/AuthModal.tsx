@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { account } from '@/lib/appwrite'
+import { ID } from 'appwrite'
 import { X, Mail, Lock, User, Eye, EyeOff } from 'lucide-react'
 
 interface AuthModalProps {
@@ -30,37 +31,27 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
 
         try {
             if (mode === 'signup') {
-                const { data, error } = await supabase.auth.signUp({
-                    email: formData.email,
-                    password: formData.password,
-                    options: {
-                        data: {
-                            full_name: formData.fullName
-                        }
-                    }
-                })
+                // Create account with Appwrite
+                const user = await account.create(
+                    ID.unique(),
+                    formData.email,
+                    formData.password,
+                    formData.fullName
+                )
 
-                if (error) throw error
+                // Create session
+                await account.createEmailPasswordSession(formData.email, formData.password)
 
-                if (data.user && !data.user.email_confirmed_at) {
-                    setSuccess('Please check your email to confirm your account!')
-                } else {
-                    setSuccess('Account created successfully!')
-                    setTimeout(() => onClose(), 2000)
-                }
+                setSuccess('Account created successfully!')
+                setTimeout(() => onClose(), 2000)
             } else {
-                const { error } = await supabase.auth.signInWithPassword({
-                    email: formData.email,
-                    password: formData.password
-                })
-
-                if (error) throw error
-
+                // Sign in with Appwrite
+                await account.createEmailPasswordSession(formData.email, formData.password)
                 setSuccess('Signed in successfully!')
                 setTimeout(() => onClose(), 1000)
             }
-        } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'An error occurred')
+        } catch (err: any) {
+            setError(err.message || 'An error occurred')
         } finally {
             setLoading(false)
         }
@@ -216,4 +207,4 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
             </div>
         </div>
     )
-} 
+}

@@ -1,12 +1,12 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import { User, Session } from '@supabase/supabase-js'
-import { supabase } from '@/lib/supabase'
+import { account } from '@/lib/appwrite'
+import { Models } from 'appwrite'
 
 interface AuthContextType {
-    user: User | null
-    session: Session | null
+    user: Models.User<Models.Preferences> | null
+    userId: string | null
     loading: boolean
     signOut: () => Promise<void>
 }
@@ -26,40 +26,65 @@ interface AuthProviderProps {
 }
 
 export default function AuthProvider({ children }: AuthProviderProps) {
-    const [user, setUser] = useState<User | null>(null)
-    const [session, setSession] = useState<Session | null>(null)
+    const [user, setUser] = useState<Models.User<Models.Preferences> | null>(null)
+    const [userId, setUserId] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        // Get initial session
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session)
-            setUser(session?.user ?? null)
-            setLoading(false)
+        // Get initial user session
+        const initializeAuth = async () => {
+            try {
+                const currentUser = await account.get()
+                setUser(currentUser)
+                setUserId(currentUser.$id)
+            } catch (error) {
+                // User is not logged in or session expired
+                setUser(null)
+                setUserId(null)
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        initializeAuth()
+
+        // Listen for auth changes using Appwrite's subscribe method
+        const unsubscribe = account.client.subscribe('account', (response) => {
+            if (response.events.includes('account.sessions.*')) {
+                // Session changed, refresh user
+                account.get()
+                    .then((currentUser) => {
+                        setUser(currentUser)
+                        setUserId(currentUser.$id)
+                    })
+                    .catch(() => {
+                        setUser(null)
+                        setUserId(null)
+                    })
+            }
         })
 
-        // Listen for auth changes
-        const {
-            data: { subscription },
-        } = supabase.auth.onAuthStateChange(async (event, session) => {
-            setSession(session)
-            setUser(session?.user ?? null)
-            setLoading(false)
-
-            // Profile and wallet creation is handled by database trigger
-            // No need to manually create profile here
-        })
-
-        return () => subscription.unsubscribe()
+        return () => {
+            unsubscribe()
+        }
     }, [])
 
     const signOut = async () => {
-        await supabase.auth.signOut()
+        try {
+            await account.deleteSession('current')
+            setUser(null)
+            setUserId(null)
+        } catch (error) {
+            console.error('Error signing out:', error)
+            // Even if there's an error, clear the user state
+            setUser(null)
+            setUserId(null)
+        }
     }
 
     const value = {
         user,
-        session,
+        userId,
         loading,
         signOut,
     }
@@ -69,4 +94,4 @@ export default function AuthProvider({ children }: AuthProviderProps) {
             {children}
         </AuthContext.Provider>
     )
-} 
+}

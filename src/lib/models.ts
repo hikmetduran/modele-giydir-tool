@@ -1,5 +1,6 @@
 import { ModelImage } from './types'
-import { supabase } from './supabase'
+import { databases, COLLECTIONS } from './appwrite'
+import { Query } from 'appwrite'
 
 // Cache for model images to avoid repeated database calls
 let modelImagesCache: ModelImage[] | null = null
@@ -14,23 +15,21 @@ export async function getAllModelImages(): Promise<ModelImage[]> {
     }
 
     try {
-        const { data, error } = await supabase
-            .from('model_photos')
-            .select('*')
-            .eq('is_active', true)
-            .order('sort_order', { ascending: true })
-
-        if (error) {
-            console.error('Error fetching model photos:', error)
-            throw error
-        }
+        const response = await databases.listDocuments(
+            'modele-giydir-db',
+            COLLECTIONS.modelPhotos,
+            [
+                Query.equal('is_active', true),
+                Query.orderAsc('sort_order')
+            ]
+        )
 
         // Convert database records to ModelImage interface
-        const modelImages: ModelImage[] = (data || []).map(photo => ({
-            id: photo.id,
+        const modelImages: ModelImage[] = response.documents.map(photo => ({
+            id: photo.$id,
             name: photo.name,
             url: photo.image_url,
-            preview: photo.image_url, // Using the same URL for preview, you can create thumbnails later
+            preview: photo.image_url,
             description: photo.description || undefined,
             gender: photo.gender || undefined
         }))
@@ -50,29 +49,23 @@ export async function getAllModelImages(): Promise<ModelImage[]> {
 // Function to get model by ID from the database
 export async function getModelById(id: string): Promise<ModelImage | undefined> {
     try {
-        const { data, error } = await supabase
-            .from('model_photos')
-            .select('*')
-            .eq('id', id)
-            .eq('is_active', true)
-            .single()
+        const response = await databases.getDocument(
+            'modele-giydir-db',
+            COLLECTIONS.modelPhotos,
+            id
+        )
 
-        if (error) {
-            console.error('Error fetching model photo by ID:', error)
-            return undefined
-        }
-
-        if (!data) {
+        if (!response) {
             return undefined
         }
 
         return {
-            id: data.id,
-            name: data.name,
-            url: data.image_url,
-            preview: data.image_url,
-            description: data.description || undefined,
-            gender: data.gender || undefined
+            id: response.$id,
+            name: response.name,
+            url: response.image_url,
+            preview: response.image_url,
+            description: response.description || undefined,
+            gender: response.gender || undefined
         }
     } catch (error) {
         console.error('Failed to fetch model by ID:', error)
@@ -101,20 +94,22 @@ export async function getRandomModels(count: number = 3): Promise<ModelImage[]> 
 // Function to filter models by style/gender
 export async function getModelsByStyle(style: string): Promise<ModelImage[]> {
     try {
-        const { data, error } = await supabase
-            .from('model_photos')
-            .select('*')
-            .eq('is_active', true)
-            .or(`gender.ilike.%${style}%,body_type.ilike.%${style}%,name.ilike.%${style}%,description.ilike.%${style}%`)
-            .order('sort_order', { ascending: true })
+        const response = await databases.listDocuments(
+            'modele-giydir-db',
+            COLLECTIONS.modelPhotos,
+            [
+                Query.equal('is_active', true),
+                Query.or([
+                    Query.contains('gender', style),
+                    Query.contains('body_type', style),
+                    Query.contains('name', style),
+                    Query.contains('description', style)
+                ])
+            ]
+        )
 
-        if (error) {
-            console.error('Error filtering models by style:', error)
-            throw error
-        }
-
-        return (data || []).map(photo => ({
-            id: photo.id,
+        return response.documents.map(photo => ({
+            id: photo.$id,
             name: photo.name,
             url: photo.image_url,
             preview: photo.image_url,
@@ -130,20 +125,18 @@ export async function getModelsByStyle(style: string): Promise<ModelImage[]> {
 // Function to get models by gender
 export async function getModelsByGender(gender: 'male' | 'female' | 'unisex'): Promise<ModelImage[]> {
     try {
-        const { data, error } = await supabase
-            .from('model_photos')
-            .select('*')
-            .eq('is_active', true)
-            .eq('gender', gender)
-            .order('sort_order', { ascending: true })
+        const response = await databases.listDocuments(
+            'modele-giydir-db',
+            COLLECTIONS.modelPhotos,
+            [
+                Query.equal('is_active', true),
+                Query.equal('gender', gender),
+                Query.orderAsc('sort_order')
+            ]
+        )
 
-        if (error) {
-            console.error('Error filtering models by gender:', error)
-            throw error
-        }
-
-        return (data || []).map(photo => ({
-            id: photo.id,
+        return response.documents.map(photo => ({
+            id: photo.$id,
             name: photo.name,
             url: photo.image_url,
             preview: photo.image_url,
@@ -164,14 +157,12 @@ export function clearModelCache(): void {
 
 // Function to get storage URL for a model image
 export function getModelImageStorageUrl(imagePath: string): string {
-    const { data } = supabase.storage
-        .from('model-photos')
-        .getPublicUrl(imagePath)
-
-    return data.publicUrl
+    // This would be used if we need to construct URLs from storage paths
+    // For now, we use the direct URL from the database
+    return imagePath
 }
 
 // Legacy compatibility - keep this for now but make it async
 export async function getModelImages(): Promise<ModelImage[]> {
     return await getAllModelImages()
-} 
+}

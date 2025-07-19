@@ -132,7 +132,7 @@ export default function ModelSelection({
                             {/* Model Image */}
                             <div className="aspect-[3/4] bg-gray-200 rounded-lg overflow-hidden mb-3">
                                 <Image
-                                    src={model.preview}
+                                    src={model.image_url}
                                     alt={model.name}
                                     width={300}
                                     height={400}
@@ -191,7 +191,7 @@ export default function ModelSelection({
                     <div className="flex items-center space-x-4">
                         <div className="w-16 h-20 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
                             <Image
-                                src={selectedModel.preview}
+                                src={selectedModel.image_url}
                                 alt={selectedModel.name}
                                 width={64}
                                 height={80}
@@ -215,4 +215,4 @@ export default function ModelSelection({
             )}
         </div>
     )
-} 
+}

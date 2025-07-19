@@ -1,41 +1,41 @@
-import { TransactionType, TimestampFields, UserOwned } from './common';
+import { TransactionType } from './common';
 
 /**
  * Credit Transactions table - History of credit changes
  */
 export interface CreditTransaction {
-  id: string;
-  user_id: string; // Using user_id as separate field for ownership
-  type: TransactionType;
-  amount: number;
-  credits_before: number;
-  credits_after: number;
-  description?: string;
-  metadata?: Record<string, any>;
-  related_try_on_id?: string;
-  created_at: string;
+    id: string;
+    user_id: string; // Using user_id as separate field for ownership
+    type: TransactionType;
+    amount: number;
+    credits_before: number;
+    credits_after: number;
+    description?: string;
+    metadata?: Record<string, unknown>;
+    related_try_on_id?: string;
+    created_at: string;
 }
 
 /**
  * Credit Transaction creation input
  */
 export interface CreditTransactionInput {
-  user_id: string;
-  type: TransactionType;
-  amount: number;
-  credits_before: number;
-  credits_after: number;
-  description?: string;
-  metadata?: Record<string, any>;
-  related_try_on_id?: string;
+    user_id: string;
+    type: TransactionType;
+    amount: number;
+    credits_before: number;
+    credits_after: number;
+    description?: string;
+    metadata?: Record<string, unknown>;
+    related_try_on_id?: string;
 }
 
 /**
  * Credit Transaction update input (limited fields)
  */
 export interface CreditTransactionUpdate {
-  description?: string;
-  metadata?: Record<string, any>;
+    description?: string;
+    metadata?: Record<string, unknown>;
 }
 
 // SQL Schema for credit_transactions table

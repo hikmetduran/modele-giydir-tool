@@ -1,47 +1,47 @@
-import { Gender, TimestampFields } from './common';
+import { Gender } from './common';
 
 /**
  * Model Photos table - AI-generated model images for try-on
  */
 export interface ModelPhoto {
-  id: string;
-  name: string;
-  description?: string;
-  image_url: string;
-  image_path: string;
-  gender?: Gender;
-  body_type?: string;
-  is_active: boolean;
-  sort_order: number;
-  created_at: string;
+    id: string;
+    name: string;
+    description?: string;
+    image_url: string;
+    image_path: string;
+    gender?: Gender;
+    body_type?: string;
+    is_active: boolean;
+    sort_order: number;
+    created_at: string;
 }
 
 /**
  * Model Photo creation input (without auto-generated fields)
  */
 export interface ModelPhotoInput {
-  name: string;
-  description?: string;
-  image_url: string;
-  image_path: string;
-  gender?: Gender;
-  body_type?: string;
-  is_active?: boolean;
-  sort_order?: number;
+    name: string;
+    description?: string;
+    image_url: string;
+    image_path: string;
+    gender?: Gender;
+    body_type?: string;
+    is_active?: boolean;
+    sort_order?: number;
 }
 
 /**
  * Model Photo update input (all fields optional)
  */
 export interface ModelPhotoUpdate {
-  name?: string;
-  description?: string;
-  image_url?: string;
-  image_path?: string;
-  gender?: Gender;
-  body_type?: string;
-  is_active?: boolean;
-  sort_order?: number;
+    name?: string;
+    description?: string;
+    image_url?: string;
+    image_path?: string;
+    gender?: Gender;
+    body_type?: string;
+    is_active?: boolean;
+    sort_order?: number;
 }
 
 // SQL Schema for model_photos table

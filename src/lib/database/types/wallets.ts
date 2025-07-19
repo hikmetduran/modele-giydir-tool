@@ -1,36 +1,34 @@
-import { TimestampFields, UserOwned } from './common';
-
 /**
  * Wallets table - User credit balance system
  * Note: Using user_id as both primary key and foreign key to auth.users
  */
 export interface Wallet {
-  user_id: string; // Primary key and foreign key to auth.users
-  credits: number;
-  total_earned: number;
-  total_spent: number;
-  created_at: string;
-  updated_at: string;
+    user_id: string; // Primary key and foreign key to auth.users
+    credits: number;
+    total_earned: number;
+    total_spent: number;
+    created_at: string;
+    updated_at: string;
 }
 
 /**
  * Wallet creation input
  */
 export interface WalletInput {
-  user_id: string;
-  credits?: number;
-  total_earned?: number;
-  total_spent?: number;
+    user_id: string;
+    credits?: number;
+    total_earned?: number;
+    total_spent?: number;
 }
 
 /**
  * Wallet update input
  */
 export interface WalletUpdate {
-  credits?: number;
-  total_earned?: number;
-  total_spent?: number;
-  updated_at?: string;
+    credits?: number;
+    total_earned?: number;
+    total_spent?: number;
+    updated_at?: string;
 }
 
 // SQL Schema for wallets table

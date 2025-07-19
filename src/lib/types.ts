@@ -3,10 +3,14 @@
  * This file provides backward compatibility for old type names.
  */
 
+import type { ModelPhoto } from './database/types'
 export type { ModelPhoto as ModelImage } from './database/types'
 export type { ProductImage as StoredImage } from './database/types'
 export type { TryOnResult as ProcessingResult } from './database/types'
 export type { Gender } from './database/types'
+
+// Internal type alias for use within this file
+type ModelImage = ModelPhoto
 
 // Legacy interfaces for backward compatibility
 export interface UploadedImage {
@@ -40,7 +44,7 @@ export interface SelectableImage {
 export interface ProcessingJob {
     id: string
     productImage: SelectableImage
-    modelImage: any // Using any for backward compatibility
+    modelImage: ModelImage // Model image uses ModelImage type (ModelPhoto from database)
     status: 'pending' | 'processing' | 'completed' | 'failed'
     progress: number
     createdAt: Date
@@ -54,9 +58,9 @@ export interface AppState {
     currentJob?: ProcessingJob
     currentJobs?: ProcessingJob[]
     uploadedImages: SelectableImage[]
-    selectedModel?: any // Using any for backward compatibility
+    selectedModel?: ModelImage // Model selection uses ModelImage type (ModelPhoto from database)
     processingHistory: ProcessingJob[]
-    results: any[] // Using any for backward compatibility
+    results: unknown[] // Using unknown for backward compatibility
 }
 
 export interface AIAPIResponse {

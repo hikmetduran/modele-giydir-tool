@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Search, Download, Heart, Calendar, Clock, User, Check } from 'lucide-react'
+import Image from 'next/image'
 import { cn, formatDate, formatTime, groupByDate, sortDateGroups, downloadImage, downloadMultipleImages } from '@/lib/utils'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { getUserTryOnResultsGroupedByDate } from '@/lib/supabase-storage'
@@ -442,15 +443,19 @@ function ResultCard({ result, isSelected, isFavorite, onToggleSelection, onToggl
 
                 {/* Images */}
                 <div className="flex items-center space-x-3">
-                    <img
+                    <Image
                         src={result.product_images.image_url}
                         alt="Original"
+                        width={64}
+                        height={64}
                         className="w-16 h-16 rounded-lg object-cover"
                     />
                     <div className="text-gray-400 text-2xl">→</div>
-                    <img
+                    <Image
                         src={result.result_image_url}
                         alt="Try-on result"
+                        width={64}
+                        height={64}
                         className="w-16 h-16 rounded-lg object-cover"
                     />
                 </div>

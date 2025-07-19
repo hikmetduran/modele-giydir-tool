@@ -2,6 +2,7 @@
 
 import { useCallback, useState, useEffect } from 'react'
 import { useDropzone, FileRejection } from 'react-dropzone'
+import Image from 'next/image'
 import {
     Upload,
     AlertCircle,
@@ -121,8 +122,8 @@ export default function FileUpload({
         name: stored.original_filename,
         url: stored.image_url,
         preview: stored.image_url,
-        size: stored.file_size,
-        type: stored.mime_type,
+        size: stored.file_size || 0,
+        type: stored.mime_type || 'image/jpeg',
         createdAt: new Date(stored.created_at),
         isSelected: false,
         isUploaded: false,
@@ -230,14 +231,13 @@ export default function FileUpload({
             // Add to stored images for future reference
             const newStoredImage: StoredImage = {
                 id: result.data.id,
+                user_id: user!.id,
                 original_filename: uploadingFile.file.name,
                 image_url: result.data.image_url,
                 image_path: result.data.image_path,
                 file_size: uploadingFile.file.size,
                 mime_type: uploadingFile.file.type,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-                user_id: user!.id
+                created_at: new Date().toISOString()
             }
 
             setStoredImages(prev => [newStoredImage, ...prev])
@@ -518,9 +518,11 @@ export default function FileUpload({
                         {uploadingFiles.map((file) => (
                             <div key={file.id} className="flex items-center space-x-4 p-4 bg-white rounded-lg border shadow-sm">
                                 <div className="flex-shrink-0 w-12 h-12 bg-gray-100 rounded-lg overflow-hidden">
-                                    <img
+                                    <Image
                                         src={file.preview}
                                         alt={file.file.name}
+                                        width={48}
+                                        height={48}
                                         className="w-full h-full object-cover"
                                     />
                                 </div>
@@ -607,10 +609,11 @@ export default function FileUpload({
                                         )}
                                         onClick={() => toggleImageSelection(image.id)}
                                     >
-                                        <img
+                                        <Image
                                             src={image.image_url}
                                             alt={image.original_filename}
-                                            className="w-full h-full object-cover"
+                                            fill
+                                            className="object-cover"
                                         />
 
                                         {/* Selection indicator */}
@@ -635,7 +638,7 @@ export default function FileUpload({
                                     {/* Image info */}
                                     <div className="mt-2 text-sm">
                                         <p className="font-medium text-gray-900 truncate">{image.original_filename}</p>
-                                        <p className="text-xs text-gray-500">{formatBytes(image.file_size)}</p>
+                                        <p className="text-xs text-gray-500">{formatBytes(image.file_size || 0)}</p>
                                     </div>
                                 </div>
                             ) : (
@@ -649,10 +652,11 @@ export default function FileUpload({
                                         )}
                                         onClick={() => toggleImageSelection(image.id)}
                                     >
-                                        <img
+                                        <Image
                                             src={image.image_url}
                                             alt={image.original_filename}
-                                            className="w-full h-full object-cover"
+                                            fill
+                                            className="object-cover"
                                         />
                                         {isSelected && (
                                             <div className="absolute top-0 right-0 p-1 bg-purple-600 text-white rounded-full transform translate-x-1 -translate-y-1">
@@ -662,7 +666,7 @@ export default function FileUpload({
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="font-medium text-gray-900 truncate">{image.original_filename}</p>
-                                        <p className="text-sm text-gray-500">{formatBytes(image.file_size)}</p>
+                                        <p className="text-sm text-gray-500">{formatBytes(image.file_size || 0)}</p>
                                         <p className="text-xs text-gray-400">
                                             {new Date(image.created_at).toLocaleDateString()}
                                         </p>

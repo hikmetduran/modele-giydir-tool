@@ -1,50 +1,50 @@
-import { ProcessingStatus, TimestampFields, UserOwned } from './common';
+import { ProcessingStatus } from './common';
 
 /**
  * Try On Results table - Results from AI clothing try-on processing
  */
 export interface TryOnResult {
-  id: string;
-  user_id: string; // Using user_id as separate field for ownership
-  product_image_id: string;
-  model_photo_id: string;
-  result_image_url?: string;
-  result_image_path?: string;
-  status: ProcessingStatus;
-  metadata?: Record<string, any>;
-  credits_used: number;
-  error_message?: string;
-  processing_started_at?: string;
-  processing_completed_at?: string;
-  ai_provider?: string;
-  ai_model?: string;
-  processing_time_seconds?: number;
-  created_at: string;
-  updated_at: string;
+    id: string;
+    user_id: string; // Using user_id as separate field for ownership
+    product_image_id: string;
+    model_photo_id: string;
+    result_image_url?: string;
+    result_image_path?: string;
+    status: ProcessingStatus;
+    metadata?: Record<string, unknown>;
+    credits_used: number;
+    error_message?: string;
+    processing_started_at?: string;
+    processing_completed_at?: string;
+    ai_provider?: string;
+    ai_model?: string;
+    processing_time_seconds?: number;
+    created_at: string;
+    updated_at: string;
 }
 
 /**
  * Try On Result creation input
  */
 export interface TryOnResultInput {
-  user_id: string;
-  product_image_id: string;
-  model_photo_id: string;
-  credits_used: number;
-  metadata?: Record<string, any>;
+    user_id: string;
+    product_image_id: string;
+    model_photo_id: string;
+    credits_used: number;
+    metadata?: Record<string, unknown>;
 }
 
 /**
  * Try On Result update input
  */
 export interface TryOnResultUpdate {
-  result_image_url?: string;
-  result_image_path?: string;
-  status?: ProcessingStatus;
-  metadata?: Record<string, any>;
-  error_message?: string;
-  processing_started_at?: string;
-  processing_completed_at?: string;
+    result_image_url?: string;
+    result_image_path?: string;
+    status?: ProcessingStatus;
+    metadata?: Record<string, unknown>;
+    error_message?: string;
+    processing_started_at?: string;
+    processing_completed_at?: string;
 }
 
 // SQL Schema for try_on_results table

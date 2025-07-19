@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Upload, Users, Sparkles, Download, ArrowRight, ArrowLeft } from 'lucide-react'
+import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { SelectableImage, ModelImage, ProcessingJob, AppState } from '@/lib/types'
 import { generateId } from '@/lib/utils'
@@ -467,10 +468,11 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
                                 {appState.currentJobs.map((job, index) => (
                                     <div key={job.id} className="bg-gray-50 rounded-lg p-4">
                                         <div className="aspect-square bg-gray-200 rounded-lg overflow-hidden mb-3">
-                                            <img
+                                            <Image
                                                 src={job.productImage.preview}
                                                 alt={`Product ${index + 1}`}
-                                                className="w-full h-full object-cover"
+                                                fill
+                                                className="object-cover"
                                             />
                                         </div>
                                         <div className="bg-gray-200 rounded-full h-2 mb-2">
@@ -540,9 +542,11 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
                                                 <h4 className="text-sm font-medium text-gray-700 mb-2">Original</h4>
                                                 <div className="relative bg-gray-200 rounded-lg overflow-hidden cursor-pointer group"
                                                     onClick={() => downloadImage(job.productImage.preview, `original-product-${index + 1}.jpg`)}>
-                                                    <img
+                                                    <Image
                                                         src={job.productImage.preview}
                                                         alt={`Original product ${index + 1}`}
+                                                        width={400}
+                                                        height={192}
                                                         className="w-full h-48 object-cover"
                                                     />
                                                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/50">
@@ -557,9 +561,11 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
                                                     onClick={() => job.resultUrl && downloadImage(job.resultUrl, `try-on-result-${index + 1}.jpg`)}>
                                                     {job.resultUrl ? (
                                                         <>
-                                                            <img
+                                                            <Image
                                                                 src={job.resultUrl}
                                                                 alt={`Try-on result ${index + 1}`}
+                                                                width={400}
+                                                                height={192}
                                                                 className="w-full h-48 object-cover"
                                                             />
                                                             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/50">

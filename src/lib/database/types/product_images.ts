@@ -1,46 +1,44 @@
-import { TimestampFields, UserOwned } from './common';
-
 /**
  * Product Images table - User-uploaded clothing/product images
  */
 export interface ProductImage {
-  id: string;
-  user_id: string; // Using user_id as separate field for ownership
-  original_filename: string;
-  image_url: string;
-  image_path: string;
-  file_size?: number;
-  mime_type?: string;
-  width?: number;
-  height?: number;
-  created_at: string;
+    id: string;
+    user_id: string; // Using user_id as separate field for ownership
+    original_filename: string;
+    image_url: string;
+    image_path: string;
+    file_size?: number;
+    mime_type?: string;
+    width?: number;
+    height?: number;
+    created_at: string;
 }
 
 /**
  * Product Image creation input
  */
 export interface ProductImageInput {
-  user_id: string;
-  original_filename: string;
-  image_url: string;
-  image_path: string;
-  file_size?: number;
-  mime_type?: string;
-  width?: number;
-  height?: number;
+    user_id: string;
+    original_filename: string;
+    image_url: string;
+    image_path: string;
+    file_size?: number;
+    mime_type?: string;
+    width?: number;
+    height?: number;
 }
 
 /**
  * Product Image update input
  */
 export interface ProductImageUpdate {
-  original_filename?: string;
-  image_url?: string;
-  image_path?: string;
-  file_size?: number;
-  mime_type?: string;
-  width?: number;
-  height?: number;
+    original_filename?: string;
+    image_url?: string;
+    image_path?: string;
+    file_size?: number;
+    mime_type?: string;
+    width?: number;
+    height?: number;
 }
 
 // SQL Schema for product_images table

@@ -35,32 +35,6 @@ export const supabaseServer = createClient(
 export type Database = {
     public: {
         Tables: {
-            profiles: {
-                Row: {
-                    id: string
-                    email: string
-                    full_name: string | null
-                    avatar_url: string | null
-                    created_at: string
-                    updated_at: string
-                }
-                Insert: {
-                    id: string
-                    email: string
-                    full_name?: string | null
-                    avatar_url?: string | null
-                    created_at?: string
-                    updated_at?: string
-                }
-                Update: {
-                    id?: string
-                    email?: string
-                    full_name?: string | null
-                    avatar_url?: string | null
-                    created_at?: string
-                    updated_at?: string
-                }
-            }
             model_photos: {
                 Row: {
                     id: string
@@ -247,7 +221,6 @@ export type Database = {
 }
 
 // Helper types for our application
-export type Profile = Database['public']['Tables']['profiles']['Row']
 export type ModelPhoto = Database['public']['Tables']['model_photos']['Row']
 export type ProductImage = Database['public']['Tables']['product_images']['Row']
 export type TryOnResult = Database['public']['Tables']['try_on_results']['Row']
@@ -261,17 +234,6 @@ export type TryOnStatus = 'pending' | 'processing' | 'completed' | 'failed'
 export async function getAuthUser() {
     const { data: { user }, error } = await supabase.auth.getUser()
     return { user, error }
-}
-
-// Helper function to get user profile
-export async function getUserProfile(userId: string) {
-    const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single()
-
-    return { data, error }
 }
 
 // Wallet management functions
@@ -336,4 +298,4 @@ export async function getCreditTransactions(userId: string) {
         .order('created_at', { ascending: false })
 
     return { data, error }
-} 
+}

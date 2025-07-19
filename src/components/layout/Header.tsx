@@ -8,7 +8,6 @@ import { Upload, LogIn, LogOut, User, Image as ImageIcon, Coins, RefreshCw } fro
 import { useAuth } from '@/components/auth/AuthProvider'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import AuthModal from '@/components/auth/AuthModal'
-import { supabase } from '@/lib/supabase'
 import { useWallet } from '@/lib/hooks/useWallet'
 
 const navigation = [
@@ -45,41 +44,12 @@ export default function Header() {
         if (!user) return
 
         try {
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', user.id)
-                .single()
-
-            if (error) {
-                // If profile doesn't exist, create it
-                if (error.code === 'PGRST116') {
-                    console.log('Profile not found, creating one...')
-                    const { data: newProfile, error: createError } = await supabase
-                        .from('profiles')
-                        .insert([
-                            {
-                                id: user.id,
-                                email: user.email!,
-                                full_name: user.user_metadata?.full_name || null,
-                                avatar_url: user.user_metadata?.avatar_url || null,
-                            },
-                        ])
-                        .select()
-                        .single()
-
-                    if (createError) {
-                        console.error('Error creating profile:', createError)
-                        return
-                    }
-                    setUserProfile(newProfile)
-                } else {
-                    console.error('Error loading profile:', error)
-                }
-                return
+            // Use auth.user metadata instead of profiles table
+            const profileData = {
+                full_name: user.user_metadata?.full_name || null,
+                avatar_url: user.user_metadata?.avatar_url || null
             }
-
-            setUserProfile(data)
+            setUserProfile(profileData)
         } catch (err) {
             console.error('Error loading profile:', err)
         }
@@ -238,4 +208,4 @@ export default function Header() {
             />
         </header>
     )
-} 
+}

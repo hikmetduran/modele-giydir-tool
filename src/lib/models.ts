@@ -1,16 +1,16 @@
-import { ModelImage } from './types'
+import { ModelPhoto, Gender } from './database/types'
 import { supabase } from './supabase'
 
-// Cache for model images to avoid repeated database calls
-let modelImagesCache: ModelImage[] | null = null
+// Cache for model photos to avoid repeated database calls
+let modelPhotosCache: ModelPhoto[] | null = null
 let cacheTimestamp: number | null = null
 const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
 
 // Function to get all active model photos from the database
-export async function getAllModelImages(): Promise<ModelImage[]> {
+export async function getAllModelPhotos(): Promise<ModelPhoto[]> {
     // Check if we have cached data that's still valid
-    if (modelImagesCache && cacheTimestamp && Date.now() - cacheTimestamp < CACHE_DURATION) {
-        return modelImagesCache
+    if (modelPhotosCache && cacheTimestamp && Date.now() - cacheTimestamp < CACHE_DURATION) {
+        return modelPhotosCache
     }
 
     try {
@@ -25,29 +25,19 @@ export async function getAllModelImages(): Promise<ModelImage[]> {
             throw error
         }
 
-        // Convert database records to ModelImage interface
-        const modelImages: ModelImage[] = (data || []).map(photo => ({
-            id: photo.id,
-            name: photo.name,
-            url: photo.image_url,
-            preview: photo.image_url, // Using the same URL for preview, you can create thumbnails later
-            description: photo.description || undefined
-        }))
-
-        // Update cache
-        modelImagesCache = modelImages
+        // Cache the results
+        modelPhotosCache = data || []
         cacheTimestamp = Date.now()
 
-        return modelImages
+        return data || []
     } catch (error) {
-        console.error('Failed to fetch model images:', error)
-        // Return empty array if database fetch fails
+        console.error('Failed to fetch model photos:', error)
         return []
     }
 }
 
 // Function to get model by ID from the database
-export async function getModelById(id: string): Promise<ModelImage | undefined> {
+export async function getModelPhotoById(id: string): Promise<ModelPhoto | undefined> {
     try {
         const { data, error } = await supabase
             .from('model_photos')
@@ -61,27 +51,17 @@ export async function getModelById(id: string): Promise<ModelImage | undefined> 
             return undefined
         }
 
-        if (!data) {
-            return undefined
-        }
-
-        return {
-            id: data.id,
-            name: data.name,
-            url: data.image_url,
-            preview: data.image_url,
-            description: data.description || undefined
-        }
+        return data || undefined
     } catch (error) {
         console.error('Failed to fetch model by ID:', error)
         return undefined
     }
 }
 
-// Function to get random models for suggestions
-export async function getRandomModels(count: number = 3): Promise<ModelImage[]> {
+// Function to get random model photos for suggestions
+export async function getRandomModelPhotos(count: number = 3): Promise<ModelPhoto[]> {
     try {
-        const allModels = await getAllModelImages()
+        const allModels = await getAllModelPhotos()
 
         if (allModels.length === 0) {
             return []
@@ -91,13 +71,13 @@ export async function getRandomModels(count: number = 3): Promise<ModelImage[]> 
         const shuffled = [...allModels].sort(() => 0.5 - Math.random())
         return shuffled.slice(0, count)
     } catch (error) {
-        console.error('Failed to fetch random models:', error)
+        console.error('Failed to fetch random model photos:', error)
         return []
     }
 }
 
-// Function to filter models by style/gender
-export async function getModelsByStyle(style: string): Promise<ModelImage[]> {
+// Function to filter model photos by style/gender
+export async function getModelPhotosByStyle(style: string): Promise<ModelPhoto[]> {
     try {
         const { data, error } = await supabase
             .from('model_photos')
@@ -107,25 +87,19 @@ export async function getModelsByStyle(style: string): Promise<ModelImage[]> {
             .order('sort_order', { ascending: true })
 
         if (error) {
-            console.error('Error filtering models by style:', error)
+            console.error('Error filtering model photos by style:', error)
             throw error
         }
 
-        return (data || []).map(photo => ({
-            id: photo.id,
-            name: photo.name,
-            url: photo.image_url,
-            preview: photo.image_url,
-            description: photo.description || undefined
-        }))
+        return data || []
     } catch (error) {
-        console.error('Failed to filter models by style:', error)
+        console.error('Failed to filter model photos by style:', error)
         return []
     }
 }
 
-// Function to get models by gender
-export async function getModelsByGender(gender: 'male' | 'female' | 'unisex'): Promise<ModelImage[]> {
+// Function to get model photos by gender
+export async function getModelPhotosByGender(gender: Gender): Promise<ModelPhoto[]> {
     try {
         const { data, error } = await supabase
             .from('model_photos')
@@ -135,26 +109,20 @@ export async function getModelsByGender(gender: 'male' | 'female' | 'unisex'): P
             .order('sort_order', { ascending: true })
 
         if (error) {
-            console.error('Error filtering models by gender:', error)
+            console.error('Error filtering model photos by gender:', error)
             throw error
         }
 
-        return (data || []).map(photo => ({
-            id: photo.id,
-            name: photo.name,
-            url: photo.image_url,
-            preview: photo.image_url,
-            description: photo.description || undefined
-        }))
+        return data || []
     } catch (error) {
-        console.error('Failed to filter models by gender:', error)
+        console.error('Failed to filter model photos by gender:', error)
         return []
     }
 }
 
 // Function to clear the model cache (useful for admin operations)
 export function clearModelCache(): void {
-    modelImagesCache = null
+    modelPhotosCache = null
     cacheTimestamp = null
 }
 
@@ -167,7 +135,27 @@ export function getModelImageStorageUrl(imagePath: string): string {
     return data.publicUrl
 }
 
-// Legacy compatibility - keep this for now but make it async
-export async function getModelImages(): Promise<ModelImage[]> {
-    return await getAllModelImages()
-} 
+// Legacy compatibility functions
+export async function getAllModelImages(): Promise<ModelPhoto[]> {
+    return await getAllModelPhotos()
+}
+
+export async function getModelById(id: string): Promise<ModelPhoto | undefined> {
+    return await getModelPhotoById(id)
+}
+
+export async function getRandomModels(count: number = 3): Promise<ModelPhoto[]> {
+    return await getRandomModelPhotos(count)
+}
+
+export async function getModelsByStyle(style: string): Promise<ModelPhoto[]> {
+    return await getModelPhotosByStyle(style)
+}
+
+export async function getModelsByGender(gender: 'male' | 'female' | 'unisex'): Promise<ModelPhoto[]> {
+    return await getModelPhotosByGender(gender as Gender)
+}
+
+export async function getModelImages(): Promise<ModelPhoto[]> {
+    return await getAllModelPhotos()
+}

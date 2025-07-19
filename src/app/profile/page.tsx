@@ -39,49 +39,19 @@ export default function ProfilePage() {
 
     const loadProfile = useCallback(async () => {
         try {
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', user!.id)
-                .single()
-
-            if (error) {
-                // If profile doesn't exist, create it
-                if (error.code === 'PGRST116') {
-                    console.log('Profile not found, creating one...')
-                    const { data: newProfile, error: createError } = await supabase
-                        .from('profiles')
-                        .insert([
-                            {
-                                id: user!.id,
-                                email: user!.email!,
-                                full_name: user!.user_metadata?.full_name || null,
-                                avatar_url: user!.user_metadata?.avatar_url || null,
-                            },
-                        ])
-                        .select()
-                        .single()
-
-                    if (createError) {
-                        console.error('Error creating profile:', createError)
-                        setError('Failed to create profile')
-                        return
-                    }
-
-                    setProfile(newProfile)
-                    setFormData({
-                        full_name: newProfile.full_name || ''
-                    })
-                } else {
-                    console.error('Error loading profile:', error)
-                    setError('Failed to load profile')
-                }
-                return
+            // Use auth.user metadata instead of profiles table
+            const profileData: ProfileData = {
+                id: user!.id,
+                email: user!.email!,
+                full_name: user!.user_metadata?.full_name || null,
+                avatar_url: user!.user_metadata?.avatar_url || null,
+                created_at: user!.created_at || new Date().toISOString(),
+                updated_at: user!.updated_at || new Date().toISOString()
             }
-
-            setProfile(data)
+            
+            setProfile(profileData)
             setFormData({
-                full_name: data.full_name || ''
+                full_name: profileData.full_name || ''
             })
         } catch (err: unknown) {
             console.error('Error loading profile:', err)
@@ -106,18 +76,21 @@ export default function ProfilePage() {
         setSuccess('')
 
         try {
-            const { data, error } = await supabase
-                .from('profiles')
-                .update({
-                    full_name: formData.full_name || null
-                })
-                .eq('id', user.id)
-                .select()
-                .single()
+            // Update user metadata instead of profiles table
+            const { error } = await supabase.auth.updateUser({
+                data: { full_name: formData.full_name }
+            })
 
             if (error) throw error
 
-            setProfile(data)
+            // Update local profile state
+            const updatedProfile: ProfileData = {
+                ...profile!,
+                full_name: formData.full_name || null,
+                updated_at: new Date().toISOString()
+            }
+            
+            setProfile(updatedProfile)
             setEditing(false)
             setSuccess('Profile updated successfully!')
 
@@ -351,4 +324,4 @@ export default function ProfilePage() {
             </div>
         </div>
     )
-} 
+}

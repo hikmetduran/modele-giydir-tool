@@ -1,3 +1,14 @@
+/**
+ * @deprecated This file is deprecated. Use @/lib/database/types instead.
+ * This file provides backward compatibility for old type names.
+ */
+
+export type { ModelPhoto as ModelImage } from './database/types'
+export type { ProductImage as StoredImage } from './database/types'
+export type { TryOnResult as ProcessingResult } from './database/types'
+export type { Gender } from './database/types'
+
+// Legacy interfaces for backward compatibility
 export interface UploadedImage {
     id: string
     file: File
@@ -11,20 +22,6 @@ export interface UploadedImage {
     supabasePath?: string
 }
 
-// Add new type for stored images from database
-export interface StoredImage {
-    id: string
-    original_filename: string
-    image_url: string
-    image_path: string
-    file_size: number
-    mime_type: string
-    created_at: string
-    updated_at: string
-    user_id: string
-}
-
-// Add new type for selectable images (can be either uploaded or stored)
 export interface SelectableImage {
     id: string
     name: string
@@ -34,24 +31,16 @@ export interface SelectableImage {
     type: string
     createdAt: Date
     isSelected: boolean
-    isUploaded: boolean // true if just uploaded, false if from storage
-    storageId?: string // database ID if from storage
+    isUploaded: boolean
+    storageId?: string
     supabasePath?: string
-    file?: File // Optional - only available for newly uploaded images
-}
-
-export interface ModelImage {
-    id: string
-    name: string
-    url: string
-    preview: string
-    description?: string
+    file?: File
 }
 
 export interface ProcessingJob {
     id: string
     productImage: SelectableImage
-    modelImage: ModelImage
+    modelImage: any // Using any for backward compatibility
     status: 'pending' | 'processing' | 'completed' | 'failed'
     progress: number
     createdAt: Date
@@ -60,24 +49,14 @@ export interface ProcessingJob {
     error?: string
 }
 
-export interface ProcessingResult {
-    id: string
-    jobId: string
-    originalProduct: UploadedImage
-    selectedModel: ModelImage
-    resultUrl: string
-    createdAt: Date
-    downloaded?: boolean
-}
-
 export interface AppState {
     currentStep: 'upload' | 'select' | 'process' | 'results'
     currentJob?: ProcessingJob
     currentJobs?: ProcessingJob[]
     uploadedImages: SelectableImage[]
-    selectedModel?: ModelImage
+    selectedModel?: any // Using any for backward compatibility
     processingHistory: ProcessingJob[]
-    results: ProcessingResult[]
+    results: any[] // Using any for backward compatibility
 }
 
 export interface AIAPIResponse {
@@ -86,4 +65,4 @@ export interface AIAPIResponse {
     output?: string[]
     error?: string
     progress?: number
-} 
+}

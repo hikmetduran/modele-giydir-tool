@@ -12,7 +12,11 @@
         "lint": "next lint",
         "generate-models": "tsx src/scripts/run-model-generator.ts",
         "generate-models:dry-run": "tsx src/scripts/run-model-generator.ts --dry-run",
-        "test-setup": "tsx src/scripts/test-setup.ts"
+        "test-setup": "tsx src/scripts/test-setup.ts",
+        "db:validate": "tsx src/lib/database/cli/validate-schema.ts",
+        "db:sync-types": "tsx src/lib/database/cli/sync-types.ts",
+        "db:setup": "tsx src/lib/database/cli/index.ts setup",
+        "db:info": "tsx src/lib/database/cli/index.ts info"
     },
     "dependencies": {
         "@fal-ai/client": "^1.5.0",
@@ -35,9 +39,10 @@
     "devDependencies": {
         "@eslint/eslintrc": "^3",
         "@tailwindcss/postcss": "^4",
-        "@types/node": "^20",
+        "@types/node": "^20.19.9",
         "@types/react": "^19",
         "@types/react-dom": "^19",
+        "commander": "^14.0.0",
         "dotenv": "^17.2.0",
         "eslint": "^9",
         "eslint-config-next": "15.3.5",

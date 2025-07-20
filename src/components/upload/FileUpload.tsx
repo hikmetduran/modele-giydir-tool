@@ -64,7 +64,6 @@ export default function FileUpload({
     const [searchTerm, setSearchTerm] = useState('')
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
     // Removed unused isDragOver state
-    const [debugMode, setDebugMode] = useState(false)
 
     // Load stored images when user signs in
     useEffect(() => {
@@ -410,14 +409,6 @@ export default function FileUpload({
                     </p>
                 </div>
                 <div className="flex items-center space-x-3">
-                    {debugMode && (
-                        <button
-                            onClick={() => setDebugMode(false)}
-                            className="px-3 py-1 bg-purple-100 text-purple-800 text-xs rounded-md"
-                        >
-                            🐛 Debug ON
-                        </button>
-                    )}
                     {selectedImages.length > 0 && (
                         <button
                             onClick={clearAllSelected}
@@ -529,9 +520,6 @@ export default function FileUpload({
                                 <div className="flex-1 min-w-0">
                                     <p className="font-medium text-gray-900 truncate">{file.file.name}</p>
                                     <p className="text-sm text-gray-500">{formatBytes(file.file.size)}</p>
-                                    {debugMode && file.stage && (
-                                        <p className="text-xs text-gray-400 mt-1">{file.stage}</p>
-                                    )}
                                 </div>
                                 <div className="flex items-center space-x-3">
                                     {file.status === 'uploading' && (
@@ -697,15 +685,6 @@ export default function FileUpload({
                 )}
             </div>
 
-            {/* Debug toggle */}
-            {!debugMode && (
-                <button
-                    onClick={() => setDebugMode(true)}
-                    className="fixed bottom-4 right-4 px-3 py-1 bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs rounded-md"
-                >
-                    🐛 Debug
-                </button>
-            )}
         </div>
     )
 }

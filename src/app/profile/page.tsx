@@ -268,7 +268,7 @@ export default function ProfilePage() {
                                         {transactions.slice(0, 20).map((transaction) => (
                                             <div key={transaction.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                                                 <div className="flex items-center space-x-3">
-                                                    {transaction.transaction_type === 'debit' ? (
+                                                    {transaction.type === 'deduct' ? (
                                                         <TrendingDown className="h-4 w-4 text-red-500" />
                                                     ) : (
                                                         <TrendingUp className="h-4 w-4 text-green-500" />
@@ -282,11 +282,11 @@ export default function ProfilePage() {
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <div className={`text-sm font-medium ${transaction.transaction_type === 'debit'
+                                                <div className={`text-sm font-medium ${transaction.type === 'deduct'
                                                     ? 'text-red-600'
                                                     : 'text-green-600'
                                                     }`}>
-                                                    {transaction.transaction_type === 'debit' ? '-' : '+'}
+                                                    {transaction.type === 'deduct' ? '-' : '+'}
                                                     {Math.abs(transaction.amount)}
                                                 </div>
                                             </div>

@@ -190,7 +190,7 @@ export type Database = {
                     user_id: string
                     wallet_id: string
                     amount: number
-                    transaction_type: string
+                    type: string
                     description: string | null
                     try_on_result_id: string | null
                     created_at: string
@@ -200,7 +200,7 @@ export type Database = {
                     user_id: string
                     wallet_id: string
                     amount: number
-                    transaction_type: string
+                    type: string
                     description?: string | null
                     try_on_result_id?: string | null
                     created_at?: string
@@ -210,7 +210,7 @@ export type Database = {
                     user_id?: string
                     wallet_id?: string
                     amount?: number
-                    transaction_type?: string
+                    type?: string
                     description?: string | null
                     try_on_result_id?: string | null
                     created_at?: string

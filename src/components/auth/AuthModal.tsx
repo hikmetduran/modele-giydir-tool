@@ -134,7 +134,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
                                     name="fullName"
                                     value={formData.fullName}
                                     onChange={handleInputChange}
-                                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent placeholder-gray-500 text-gray-900"
                                     placeholder="Enter your full name"
                                     required
                                 />
@@ -154,7 +154,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
                                 name="email"
                                 value={formData.email}
                                 onChange={handleInputChange}
-                                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent placeholder-gray-500 text-gray-900"
                                 placeholder="Enter your email"
                                 required
                             />
@@ -173,7 +173,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
                                 name="password"
                                 value={formData.password}
                                 onChange={handleInputChange}
-                                className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent placeholder-gray-500 text-gray-900"
                                 placeholder="Enter your password"
                                 required
                                 minLength={6}
@@ -216,4 +216,4 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
             </div>
         </div>
     )
-} 
+}

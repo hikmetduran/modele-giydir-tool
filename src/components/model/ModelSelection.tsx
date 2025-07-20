@@ -80,7 +80,7 @@ export default function ModelSelection({
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         disabled={loading}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none disabled:opacity-50 disabled:cursor-not-allowed placeholder-gray-500 text-gray-900"
                     />
                 </div>
             </div>

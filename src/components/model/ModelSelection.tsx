@@ -110,13 +110,13 @@ export default function ModelSelection({
 
             {/* Model Grid */}
             {!loading && !error && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2">
                     {filteredModels.map((model) => (
                         <div
                             key={model.id}
                             onClick={() => onSelect(model)}
                             className={cn(
-                                'relative border-2 rounded-lg p-3 cursor-pointer transition-all hover:shadow-lg',
+                                'relative border-2 rounded-lg p-2 cursor-pointer transition-all hover:shadow-lg',
                                 selectedModel?.id === model.id
                                     ? 'border-purple-500 bg-purple-50'
                                     : 'border-gray-200 hover:border-purple-300'
@@ -124,18 +124,18 @@ export default function ModelSelection({
                         >
                             {/* Selection Indicator */}
                             {selectedModel?.id === model.id && (
-                                <div className="absolute top-2 right-2 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
-                                    <Check className="h-4 w-4 text-white" />
+                                <div className="absolute top-2 right-2 w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center">
+                                    <Check className="h-3 w-3 text-white" />
                                 </div>
                             )}
 
                             {/* Model Image */}
-                            <div className="aspect-[3/4] bg-gray-200 rounded-lg overflow-hidden mb-3">
+                            <div className="aspect-[3/4] bg-gray-200 rounded-lg overflow-hidden mb-2">
                                 <Image
                                     src={model.image_url}
                                     alt={model.name}
-                                    width={300}
-                                    height={400}
+                                    width={150}
+                                    height={200}
                                     className="w-full h-full object-cover"
                                     onError={handleImageError}
                                 />

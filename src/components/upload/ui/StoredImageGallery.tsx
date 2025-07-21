@@ -100,7 +100,7 @@ export function StoredImageGallery({
                     <div key={image.id} className="flex items-center space-x-4 p-4 bg-white rounded-lg border hover:bg-gray-50 transition-colors">
                         <div
                             className={cn(
-                                'flex-shrink-0 w-16 h-16 bg-gray-100 rounded-lg overflow-hidden cursor-pointer transition-all',
+                                'relative flex-shrink-0 w-16 h-16 bg-gray-100 rounded-lg overflow-hidden cursor-pointer transition-all',
                                 isSelected
                                     ? 'ring-3 ring-purple-500 shadow-md'
                                     : 'hover:ring-2 hover:ring-purple-300'

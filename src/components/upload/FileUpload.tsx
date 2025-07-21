@@ -143,11 +143,11 @@ export default function FileUpload({
                 </div>
             )}
 
-            <UploadHeader
+            {/* <UploadHeader
                 selectedCount={selectedImages.length}
                 maxFiles={maxFiles}
                 onClearAll={handleClearAll}
-            />
+            /> */}
 
             <UploadArea
                 isProcessing={isProcessing}

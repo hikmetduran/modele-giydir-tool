@@ -65,11 +65,11 @@ export default function ModelSelection({
     return (
         <div className={cn('w-full', className)}>
             <div className="text-center mb-8">
-                <Users className="mx-auto h-16 w-16 text-gray-400 mb-4" />
+                {/* <Users className="mx-auto h-16 w-16 text-gray-400 mb-4" />
                 <h2 className="text-2xl font-semibold text-gray-900 mb-2">Select a Model</h2>
                 <p className="text-gray-600 mb-6">
                     Choose from our collection of diverse models to see how your product looks
-                </p>
+                </p> */}
 
                 {/* Search Bar */}
                 <div className="relative max-w-md mx-auto">

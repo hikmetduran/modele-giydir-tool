@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Fragment } from 'react'
 import { Upload, Users, Sparkles, Download, ArrowRight, ArrowLeft } from 'lucide-react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
@@ -42,10 +42,10 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
     }, [appState])
 
     const steps = [
-        { id: 'upload', name: 'Upload Product', icon: Upload, description: 'Upload up to 50 clothing items' },
-        { id: 'select', name: 'Select Model', icon: Users, description: 'Choose a model' },
-        { id: 'process', name: 'AI Processing', icon: Sparkles, description: 'Let AI work its magic' },
-        { id: 'results', name: 'Download Results', icon: Download, description: 'Get your try-on images' },
+        { id: 'upload', name: 'Upload Product', icon: Upload },
+        { id: 'select', name: 'Select Model', icon: Users },
+        { id: 'process', name: 'AI Processing', icon: Sparkles },
+        { id: 'results', name: 'Download Results', icon: Download },
     ]
 
     const currentStepIndex = steps.findIndex(step => step.id === appState.currentStep)
@@ -363,77 +363,57 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
     return (
         <div className={cn('max-w-6xl mx-auto', className)}>
             {/* Header */}
-            <div className="text-center mb-12">
-                <h1 className="text-4xl font-bold text-gray-900 mb-4">
+            {/* <div className="text-center mb-8">
+                <h1 className="text-3xl font-bold text-gray-900">
                     AI Try-On Tool
                 </h1>
-                <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-                    Upload up to 50 clothing photos and see how they look on different models using AI technology
-                </p>
-            </div>
-
-            {/* Progress Steps */}
-            <div className="mb-12">
-                <div className="flex items-center justify-between">
-                    {steps.map((step, index) => (
-                        <div key={step.id} className="flex items-center">
-                            <div className={cn(
-                                'flex items-center justify-center w-12 h-12 rounded-full border-2 transition-colors',
-                                index <= currentStepIndex
-                                    ? 'bg-purple-600 border-purple-600 text-white'
-                                    : 'bg-white border-gray-300 text-gray-400'
-                            )}>
-                                <step.icon className="w-6 h-6" />
-                            </div>
-                            <div className="ml-4">
-                                <div className={cn(
-                                    'text-sm font-medium',
-                                    index <= currentStepIndex ? 'text-purple-600' : 'text-gray-500'
-                                )}>
-                                    {step.name}
-                                </div>
-                                <div className="text-xs text-gray-400">{step.description}</div>
-                            </div>
-                            {index < steps.length - 1 && (
-                                <div className={cn(
-                                    'flex-1 mx-4 h-0.5 transition-colors',
-                                    index < currentStepIndex ? 'bg-purple-600' : 'bg-gray-200'
-                                )}></div>
-                            )}
-                        </div>
-                    ))}
-                </div>
-            </div>
+            </div> */}
 
             {/* Main Content Area */}
             <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
+                {/* Progress Steps */}
+                <div className="mb-12">
+                    <div className="flex items-center justify-between">
+                        {steps.map((step, index) => (
+                            <Fragment key={step.id}>
+                                <div className="flex flex-col items-center text-center w-24">
+                                    <div className={cn(
+                                        'flex items-center justify-center w-12 h-12 rounded-full border-2 transition-colors',
+                                        index <= currentStepIndex
+                                            ? 'bg-purple-600 border-purple-600 text-white'
+                                            : 'bg-white border-gray-300 text-gray-400'
+                                    )}>
+                                        <step.icon className="w-6 h-6" />
+                                    </div>
+                                    <p className={cn(
+                                        'text-sm font-medium mt-2 h-10 flex items-center', // h-10 to ensure consistent height
+                                        index <= currentStepIndex ? 'text-purple-600' : 'text-gray-500'
+                                    )}>
+                                        {step.name}
+                                    </p>
+                                </div>
+
+                                {index < steps.length - 1 && (
+                                    <div className={cn(
+                                        'flex-1 h-0.5',
+                                        index < currentStepIndex ? 'bg-purple-600' : 'bg-gray-200'
+                                    )}></div>
+                                )}
+                            </Fragment>
+                        ))}
+                    </div>
+                </div>
                 {/* Upload Step */}
                 {appState.currentStep === 'upload' && (
-                    <div>
-                        <div className="text-center mb-6">
-                            <h2 className="text-2xl font-semibold text-gray-900 mb-2">Upload Your Products</h2>
-                            <p className="text-gray-600">
-                                Upload up to 50 clothing items to try on your selected model
-                            </p>
-                        </div>
-                        <FileUpload onUpload={handleUpload} maxFiles={50} />
-                    </div>
+                    <FileUpload onUpload={handleUpload} maxFiles={50} />
                 )}
 
                 {/* Model Selection Step */}
                 {appState.currentStep === 'select' && (
-                    <div>
-                        <div className="text-center mb-6">
-                            <h2 className="text-2xl font-semibold text-gray-900 mb-2">Select a Model</h2>
-                            <p className="text-gray-600">
-                                Choose a model to try on your {appState.uploadedImages.length} uploaded item{appState.uploadedImages.length !== 1 ? 's' : ''}
-                            </p>
-                        </div>
-                        <ModelSelection
-                            onSelect={handleModelSelect}
-                            selectedModel={appState.selectedModel}
-                        />
-                    </div>
+                    <ModelSelection
+                        onSelect={handleModelSelect}
+                        selectedModel={appState.selectedModel}
+                    />
                 )}
 
                 {/* Processing Step */}

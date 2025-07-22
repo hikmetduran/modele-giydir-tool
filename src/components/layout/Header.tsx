@@ -4,7 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { Upload, LogIn, LogOut, User, Image as ImageIcon, Coins, RefreshCw } from 'lucide-react'
+import { Upload, LogIn, LogOut, User, Image as ImageIcon, Coins } from 'lucide-react'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import AuthModal from '@/components/auth/AuthModal'
@@ -18,7 +18,7 @@ const navigation = [
 export default function Header() {
     const pathname = usePathname()
     const { user, loading, signOut } = useAuth()
-    const { wallet, loading: walletLoading, refreshWallet } = useWallet()
+    const { wallet, loading: walletLoading } = useWallet()
     const [authModalOpen, setAuthModalOpen] = useState(false)
     const [userMenuOpen, setUserMenuOpen] = useState(false)
     const [userProfile, setUserProfile] = useState<{ full_name?: string | null } | null>(null)
@@ -129,38 +129,23 @@ export default function Header() {
                     </nav>
 
                     <div className="flex items-center space-x-4">
-                        {/* Credits Display */}
-                        {user && (
-                            <div className="flex items-center space-x-2 px-3 py-1 bg-gradient-to-r from-yellow-100 to-orange-100 rounded-full border border-yellow-200">
-                                <Coins className="h-4 w-4 text-yellow-600" />
-                                <span className="text-sm font-medium text-yellow-800">
-                                    {walletLoading ? '...' : wallet?.credits || 0}
-                                </span>
-                                <button
-                                    onClick={refreshWallet}
-                                    disabled={walletLoading}
-                                    className="ml-1 p-1 rounded-full hover:bg-yellow-200 transition-colors disabled:opacity-50"
-                                    title="Refresh wallet balance"
-                                >
-                                    <RefreshCw className={`h-3 w-3 text-yellow-600 ${walletLoading ? 'animate-spin' : ''}`} />
-                                </button>
-                            </div>
-                        )}
-
                         {loading ? (
                             <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse"></div>
                         ) : user ? (
                             <div className="relative" ref={userMenuRef}>
                                 <button
                                     onClick={() => setUserMenuOpen(!userMenuOpen)}
-                                    className="flex items-center space-x-2 p-2 rounded-md hover:bg-gray-100 transition-colors"
+                                    className="flex items-center space-x-2 rounded-full hover:bg-gray-100 transition-colors p-1"
                                 >
+                                    <div className="flex items-center space-x-2 px-2">
+                                        <Coins className="h-4 w-4 text-yellow-500" />
+                                        <span className="text-sm font-semibold text-gray-600">
+                                            {walletLoading ? '...' : `${wallet?.credits ?? 0} credits`}
+                                        </span>
+                                    </div>
                                     <div className="h-8 w-8 rounded-full bg-purple-600 flex items-center justify-center text-white text-sm font-bold">
                                         {getInitials(userProfile?.full_name || user.user_metadata?.full_name)}
                                     </div>
-                                    <span className="text-sm font-medium text-gray-700">
-                                        {userProfile?.full_name || user.user_metadata?.full_name || user.email?.split('@')[0]}
-                                    </span>
                                 </button>
 
                                 {userMenuOpen && (

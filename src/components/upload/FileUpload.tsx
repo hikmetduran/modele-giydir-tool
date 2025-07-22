@@ -153,6 +153,11 @@ export default function FileUpload({
                 onViewModeChange={setViewMode}
                 filteredCount={filteredStoredImages.length}
                 totalCount={storedImages.length}
+                onFileSelect={(files) => onDrop(files, [])}
+                isProcessing={isProcessing}
+                isMaxFilesReached={selectedImages.length >= maxFiles}
+                maxSize={maxSize}
+                maxFiles={maxFiles}
             />
 
             <UploadingFileList

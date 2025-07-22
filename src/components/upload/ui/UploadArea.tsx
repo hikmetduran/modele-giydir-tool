@@ -9,7 +9,7 @@ interface UploadAreaProps {
     maxSize: number
     maxFiles: number
     storedImagesCount: number
-    onBrowseClick: () => void
+    onFileSelect: (files: File[]) => void
     getInputProps: <T extends object>(props?: T) => T
 }
 
@@ -19,7 +19,7 @@ export function UploadArea({
     maxSize,
     maxFiles,
     storedImagesCount,
-    onBrowseClick,
+    onFileSelect,
     getInputProps
 }: UploadAreaProps) {
     const handleUploadClick = () => {
@@ -30,7 +30,7 @@ export function UploadArea({
         input.onchange = (e) => {
             const files = Array.from((e.target as HTMLInputElement).files || [])
             if (files.length > 0) {
-                onBrowseClick()
+                onFileSelect(files)
             }
         }
         input.click()

@@ -142,7 +142,7 @@ export default function FileUpload({
                 maxSize={maxSize}
                 maxFiles={maxFiles}
                 storedImagesCount={storedImages.length}
-                onBrowseClick={() => getInputProps().onClick}
+                onFileSelect={(files) => onDrop(files, [])}
                 getInputProps={getInputProps}
             />
 

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { Check, Users, Search, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { ModelImage } from '@/lib/types'
+import { ModelImage, Gender } from '@/lib/types'
 import { getAllModelImages } from '@/lib/models'
 
 interface ModelSelectionProps {
@@ -19,6 +19,7 @@ export default function ModelSelection({
     className
 }: ModelSelectionProps) {
     const [searchTerm, setSearchTerm] = useState('')
+    const [selectedGender, setSelectedGender] = useState<Gender | 'all'>('all')
     const [models, setModels] = useState<ModelImage[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -42,10 +43,16 @@ export default function ModelSelection({
         fetchModels()
     }, [])
 
-    const filteredModels = models.filter(model =>
-        model.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (model.description?.toLowerCase().includes(searchTerm.toLowerCase()) || false)
-    )
+    const filteredModels = models
+        .filter(model => {
+            if (selectedGender === 'all') return true
+            return model.gender === selectedGender
+        })
+        .filter(
+            model =>
+                model.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (model.description?.toLowerCase().includes(searchTerm.toLowerCase()) || false)
+        )
 
     const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
         // Set a fallback image or hide the image
@@ -64,24 +71,46 @@ export default function ModelSelection({
 
     return (
         <div className={cn('w-full', className)}>
-            <div className="text-center mb-8">
+            <div className="mb-8">
                 {/* <Users className="mx-auto h-16 w-16 text-gray-400 mb-4" />
                 <h2 className="text-2xl font-semibold text-gray-900 mb-2">Select a Model</h2>
                 <p className="text-gray-600 mb-6">
                     Choose from our collection of diverse models to see how your product looks
                 </p> */}
 
-                {/* Search Bar */}
-                <div className="relative max-w-md mx-auto">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input
-                        type="text"
-                        placeholder="Search models..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        disabled={loading}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none disabled:opacity-50 disabled:cursor-not-allowed placeholder-gray-500 text-gray-900"
-                    />
+                <div className="flex justify-between items-center">
+                    {/* Search Bar */}
+                    <div className="relative w-full max-w-xs">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Search models..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            disabled={loading}
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none disabled:opacity-50 disabled:cursor-not-allowed placeholder-gray-500 text-gray-900"
+                        />
+                    </div>
+
+                    {/* Gender Filter */}
+                    <div className="flex items-center space-x-2">
+                        {(['all', 'female', 'male'] as const).map(gender => (
+                            <button
+                                key={gender}
+                                onClick={() => setSelectedGender(gender)}
+                                disabled={loading}
+                                className={cn(
+                                    'px-4 py-2 rounded-full text-sm font-medium transition-colors',
+                                    selectedGender === gender
+                                        ? 'bg-purple-600 text-white'
+                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300',
+                                    'disabled:opacity-50 disabled:cursor-not-allowed'
+                                )}
+                            >
+                                {gender.charAt(0).toUpperCase() + gender.slice(1)}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 

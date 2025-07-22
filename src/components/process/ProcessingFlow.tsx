@@ -443,30 +443,52 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
                         )}
 
                         {/* Individual job progress */}
-                        {appState.currentJobs && appState.currentJobs.length > 1 && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
-                                {appState.currentJobs.map((job, index) => (
-                                    <div key={job.id} className="bg-gray-50 rounded-lg p-4">
-                                        <div className="aspect-square bg-gray-200 rounded-lg overflow-hidden mb-3">
+                        {appState.currentJobs && appState.currentJobs.length > 0 && (
+                            <>
+                                {/* Single image view */}
+                                {appState.currentJobs.length === 1 && (
+                                    <div className="max-w-md mx-auto">
+                                        <div className="aspect-square bg-gray-200 rounded-lg overflow-hidden mb-3 relative">
                                             <Image
-                                                src={job.productImage.preview}
-                                                alt={`Product ${index + 1}`}
+                                                src={appState.currentJobs[0].productImage.preview}
+                                                alt="Processing product"
                                                 fill
                                                 className="object-cover"
                                             />
+                                            <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                                                <Sparkles className="h-16 w-16 text-white/80" />
+                                            </div>
                                         </div>
-                                        <div className="bg-gray-200 rounded-full h-2 mb-2">
-                                            <div
-                                                className="bg-purple-600 h-2 rounded-full transition-all duration-500"
-                                                style={{ width: `${job.progress}%` }}
-                                            ></div>
-                                        </div>
-                                        <p className="text-xs text-gray-500">
-                                            {job.status === 'completed' ? 'Complete!' : `${job.progress}%`}
-                                        </p>
                                     </div>
-                                ))}
-                            </div>
+                                )}
+
+                                {/* Grid view for multiple images */}
+                                {appState.currentJobs.length > 1 && (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
+                                        {appState.currentJobs.map((job, index) => (
+                                            <div key={job.id} className="bg-gray-50 rounded-lg p-4">
+                                                <div className="aspect-square bg-gray-200 rounded-lg overflow-hidden mb-3">
+                                                    <Image
+                                                        src={job.productImage.preview}
+                                                        alt={`Product ${index + 1}`}
+                                                        fill
+                                                        className="object-cover"
+                                                    />
+                                                </div>
+                                                <div className="bg-gray-200 rounded-full h-2 mb-2">
+                                                    <div
+                                                        className="bg-purple-600 h-2 rounded-full transition-all duration-500"
+                                                        style={{ width: `${job.progress}%` }}
+                                                    ></div>
+                                                </div>
+                                                <p className="text-xs text-gray-500">
+                                                    {job.status === 'completed' ? 'Complete!' : `${job.progress}%`}
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 )}
@@ -508,56 +530,55 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
                         </div>
 
                         {appState.currentJobs && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                                {appState.currentJobs.map((job, index) => (
-                                    <div key={job.id} className="bg-gray-50 rounded-lg p-4">
-                                        <div className="text-center mb-4">
-                                            <h3 className="text-lg font-medium text-gray-900">
-                                                Product {index + 1}
-                                            </h3>
-                                        </div>
-
-                                        <div className="space-y-4">
-                                            <div>
-                                                <h4 className="text-sm font-medium text-gray-700 mb-2">Original</h4>
-                                                <div className="relative bg-gray-200 rounded-lg overflow-hidden cursor-pointer group"
-                                                    onClick={() => downloadImage(job.productImage.preview, `original-product-${index + 1}.jpg`)}>
-                                                    <Image
-                                                        src={job.productImage.preview}
-                                                        alt={`Original product ${index + 1}`}
-                                                        width={400}
-                                                        height={192}
-                                                        className="w-full h-48 object-cover"
-                                                    />
-                                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/50">
-                                                        <Download className="h-6 w-6 text-white" />
-                                                    </div>
+                            <div className="flex flex-col items-center space-y-8">
+                                {appState.currentJobs.filter(job => job.status === 'completed').map((job) => (
+                                    <div key={job.id} className="flex items-center justify-center space-x-4 md:space-x-8 w-full max-w-3xl">
+                                        {/* Original Image */}
+                                        <div className="w-1/3">
+                                            <div
+                                                className="relative aspect-[3/4] bg-gray-200 rounded-xl overflow-hidden cursor-pointer group shadow-md hover:shadow-xl transition-shadow"
+                                                onClick={() => downloadImage(job.productImage.preview, `original-${job.id}.jpg`)}
+                                            >
+                                                <Image
+                                                    src={job.productImage.preview}
+                                                    alt="Original product"
+                                                    fill
+                                                    className="object-cover"
+                                                />
+                                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/60">
+                                                    <Download className="h-8 w-8 text-white" />
                                                 </div>
                                             </div>
+                                        </div>
 
-                                            <div>
-                                                <h4 className="text-sm font-medium text-gray-700 mb-2">Try-On Result</h4>
-                                                <div className="relative bg-gray-200 rounded-lg overflow-hidden cursor-pointer group"
-                                                    onClick={() => job.resultUrl && downloadImage(job.resultUrl, `try-on-result-${index + 1}.jpg`)}>
-                                                    {job.resultUrl ? (
-                                                        <>
-                                                            <Image
-                                                                src={job.resultUrl}
-                                                                alt={`Try-on result ${index + 1}`}
-                                                                width={400}
-                                                                height={192}
-                                                                className="w-full h-48 object-cover"
-                                                            />
-                                                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/50">
-                                                                <Download className="h-6 w-6 text-white" />
-                                                            </div>
-                                                        </>
-                                                    ) : (
-                                                        <div className="w-full h-48 flex items-center justify-center">
-                                                            <Users className="h-12 w-12 text-gray-400" />
+                                        {/* Arrow Icon */}
+                                        <div className="flex-shrink-0">
+                                            <ArrowRight className="h-8 w-8 text-gray-400" />
+                                        </div>
+
+                                        {/* Try-On Result Image */}
+                                        <div className="w-1/3">
+                                            <div
+                                                className="relative aspect-[3/4] bg-gray-200 rounded-xl overflow-hidden cursor-pointer group shadow-md hover:shadow-xl transition-shadow"
+                                                onClick={() => job.resultUrl && downloadImage(job.resultUrl, `try-on-result-${job.id}.jpg`)}
+                                            >
+                                                {job.resultUrl ? (
+                                                    <>
+                                                        <Image
+                                                            src={job.resultUrl}
+                                                            alt="Try-on result"
+                                                            fill
+                                                            className="object-cover"
+                                                        />
+                                                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/60">
+                                                            <Download className="h-8 w-8 text-white" />
                                                         </div>
-                                                    )}
-                                                </div>
+                                                    </>
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center">
+                                                        <Users className="h-12 w-12 text-gray-400" />
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>

@@ -18,7 +18,6 @@ export function UploadArea({
     isMaxFilesReached,
     maxSize,
     maxFiles,
-    storedImagesCount,
     onBrowseClick,
     getInputProps
 }: UploadAreaProps) {

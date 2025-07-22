@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { AlertCircle, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -10,7 +10,6 @@ import { useFileUpload } from './hooks/useFileUpload'
 import { useStoredImages } from './hooks/useStoredImages'
 import { useImageSelection } from './hooks/useImageSelection'
 import { AuthPrompt } from './ui/AuthPrompt'
-import { UploadHeader } from './ui/UploadHeader'
 import { UploadArea } from './ui/UploadArea'
 import { UploadingFileList } from './ui/UploadingFileList'
 import { ImageControls } from './ui/ImageControls'
@@ -42,7 +41,6 @@ export default function FileUpload({
         deleteImage,
         addStoredImage,
         filteredStoredImages,
-        setStoredImages
     } = useStoredImages()
 
     const {
@@ -50,7 +48,6 @@ export default function FileUpload({
         toggleImageSelection,
         addSelectedImage,
         removeSelectedImage,
-        clearAllSelected
     } = useImageSelection({
         storedImages,
         maxFiles,
@@ -64,7 +61,6 @@ export default function FileUpload({
         error: uploadError,
         onDrop,
         retryFailedUpload,
-        setError: setUploadError
     } = useFileUpload({
         maxFiles,
         maxSize,
@@ -115,10 +111,6 @@ export default function FileUpload({
         }
     }
 
-    const handleClearAll = () => {
-        clearAllSelected()
-        setGlobalError(null)
-    }
 
     if (!user) {
         return <AuthPrompt className={className} />
@@ -143,11 +135,6 @@ export default function FileUpload({
                 </div>
             )}
 
-            {/* <UploadHeader
-                selectedCount={selectedImages.length}
-                maxFiles={maxFiles}
-                onClearAll={handleClearAll}
-            /> */}
 
             <UploadArea
                 isProcessing={isProcessing}

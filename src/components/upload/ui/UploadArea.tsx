@@ -1,6 +1,6 @@
 'use client'
 
-import { Camera, FolderOpen, Loader2, Plus } from 'lucide-react'
+import { Camera, FolderOpen, Loader2 } from 'lucide-react'
 import { cn, formatBytes } from '@/lib/utils'
 
 interface UploadAreaProps {

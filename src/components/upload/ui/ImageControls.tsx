@@ -1,7 +1,7 @@
 'use client'
 
-import { Search, List, Grid, Images, Plus, FolderOpen, Loader2 } from 'lucide-react'
-import { cn, formatBytes } from '@/lib/utils'
+import { Search, List, Grid, Images, Plus, Loader2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 type ViewMode = 'grid' | 'list'
 
@@ -30,7 +30,6 @@ export function ImageControls({
     onFileSelect,
     isProcessing = false,
     isMaxFilesReached = false,
-    maxSize = 10 * 1024 * 1024,
     maxFiles = 50
 }: ImageControlsProps) {
     const handleUploadClick = () => {

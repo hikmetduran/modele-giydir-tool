@@ -444,51 +444,34 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
 
                         {/* Individual job progress */}
                         {appState.currentJobs && appState.currentJobs.length > 0 && (
-                            <>
-                                {/* Single image view */}
-                                {appState.currentJobs.length === 1 && (
-                                    <div className="max-w-md mx-auto">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
+                                {appState.currentJobs.map((job, index) => (
+                                    <div key={job.id} className="bg-gray-50 rounded-lg p-4">
                                         <div className="aspect-square bg-gray-200 rounded-lg overflow-hidden mb-3 relative">
                                             <Image
-                                                src={appState.currentJobs[0].productImage.preview}
-                                                alt="Processing product"
+                                                src={job.productImage.preview}
+                                                alt={`Product ${index + 1}`}
                                                 fill
                                                 className="object-cover"
                                             />
-                                            <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                                                <Sparkles className="h-16 w-16 text-white/80" />
-                                            </div>
+                                            {job.status === 'processing' && (
+                                                <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                                                    <Sparkles className="h-16 w-16 text-white/80" />
+                                                </div>
+                                            )}
                                         </div>
+                                        <div className="bg-gray-200 rounded-full h-2 mb-2">
+                                            <div
+                                                className="bg-purple-600 h-2 rounded-full transition-all duration-500"
+                                                style={{ width: `${job.progress}%` }}
+                                            ></div>
+                                        </div>
+                                        <p className="text-xs text-gray-500">
+                                            {job.status === 'completed' ? 'Complete!' : `${job.progress}%`}
+                                        </p>
                                     </div>
-                                )}
-
-                                {/* Grid view for multiple images */}
-                                {appState.currentJobs.length > 1 && (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
-                                        {appState.currentJobs.map((job, index) => (
-                                            <div key={job.id} className="bg-gray-50 rounded-lg p-4">
-                                                <div className="aspect-square bg-gray-200 rounded-lg overflow-hidden mb-3">
-                                                    <Image
-                                                        src={job.productImage.preview}
-                                                        alt={`Product ${index + 1}`}
-                                                        fill
-                                                        className="object-cover"
-                                                    />
-                                                </div>
-                                                <div className="bg-gray-200 rounded-full h-2 mb-2">
-                                                    <div
-                                                        className="bg-purple-600 h-2 rounded-full transition-all duration-500"
-                                                        style={{ width: `${job.progress}%` }}
-                                                    ></div>
-                                                </div>
-                                                <p className="text-xs text-gray-500">
-                                                    {job.status === 'completed' ? 'Complete!' : `${job.progress}%`}
-                                                </p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </>
+                                ))}
+                            </div>
                         )}
                     </div>
                 )}

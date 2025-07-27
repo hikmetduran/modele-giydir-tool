@@ -323,7 +323,7 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
         for (let i = 0; i < completedJobs.length; i++) {
             const job = completedJobs[i]
             if (job.resultUrl) {
-                await downloadImage(job.resultUrl, `try-on-result-${i + 1}.jpg`)
+                await downloadImage(job.resultUrl, `try-on-result-${i + 1}.png`)
                 // Add small delay between downloads
                 await new Promise(resolve => setTimeout(resolve, 500))
             }
@@ -543,7 +543,7 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
                                         <div className="w-1/3">
                                             <div
                                                 className="relative aspect-[3/4] bg-gray-200 rounded-xl overflow-hidden cursor-pointer group shadow-md hover:shadow-xl transition-shadow"
-                                                onClick={() => job.resultUrl && downloadImage(job.resultUrl, `try-on-result-${job.id}.jpg`)}
+                                                onClick={() => job.resultUrl && downloadImage(job.resultUrl, `try-on-result-${job.id}.png`)}
                                             >
                                                 {job.resultUrl ? (
                                                     <>

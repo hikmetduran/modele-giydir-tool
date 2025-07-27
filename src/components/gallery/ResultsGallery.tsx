@@ -200,7 +200,7 @@ export default function ResultsGallery({ className }: ResultsGalleryProps) {
         const selectedItems = filteredAndSortedResults.filter(r => selectedResults.has(r.id))
         const downloadItems = selectedItems.map(r => ({
             url: r.result_image_url,
-            filename: `tryon-${r.product_images.original_filename}-${r.model_photos.name}.jpg`
+            filename: `tryon-${r.product_images.original_filename}-${r.model_photos.name}.png`
         }))
 
         await downloadMultipleImages(downloadItems)
@@ -417,7 +417,7 @@ interface ResultCardProps {
 
 function ResultCard({ result, isSelected, isFavorite, onToggleSelection, onToggleFavorite }: ResultCardProps) {
     const downloadResult = () => {
-        downloadImage(result.result_image_url, `tryon-${result.product_images.original_filename}-${result.model_photos.name}.jpg`)
+        downloadImage(result.result_image_url, `tryon-${result.product_images.original_filename}-${result.model_photos.name}.png`)
     }
 
     // const downloadOriginal = () => {

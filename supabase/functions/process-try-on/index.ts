@@ -61,7 +61,8 @@ async function submitTryOnRequest(input: TryOnInput): Promise<{ requestId: strin
         const { request_id } = await fal.queue.submit("fal-ai/fashn/tryon/v1.6", {
             input: {
                 model_image: input.modelImageUrl,
-                garment_image: input.garmentImageUrl
+                garment_image: input.garmentImageUrl,
+                output_format: "png"
             }
         })
 
@@ -280,7 +281,7 @@ async function processTryOnWithUpdates(
             const blob = await response.blob()
 
             // Generate unique filename
-            const fileName = `try-on-result-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.jpg`
+            const fileName = `try-on-result-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.png`
             const filePath = `${userId}/${fileName}`
 
             // Upload to Supabase Storage

@@ -1093,4 +1093,132 @@ export async function testDatabaseConnection() {
             error: error instanceof Error ? error.message : 'Unknown error'
         }
     }
-} 
+}
+
+// Regenerate a try-on result with reduced credit cost
+export async function regenerateTryOnResult(
+    originalResultId: string,
+    userId: string
+): Promise<{ success: boolean; data?: { id: string }; error?: string }> {
+    try {
+        console.log('🔄 Starting regeneration for result:', originalResultId, 'user:', userId)
+
+        // Get the original result to extract product and model IDs
+        const { data: originalResult, error: fetchError } = await supabase
+            .from('try_on_results')
+            .select('product_image_id, model_photo_id, product_images!inner(*), model_photos!inner(*)')
+            .eq('id', originalResultId)
+            .eq('user_id', userId)
+            .single()
+
+        if (fetchError || !originalResult) {
+            console.error('❌ Failed to fetch original result:', fetchError)
+            return {
+                success: false,
+                error: 'Original result not found or access denied'
+            }
+        }
+
+        console.log('✅ Found original result:', {
+            productImageId: originalResult.product_image_id,
+            modelPhotoId: originalResult.model_photo_id
+        })
+
+        // Create a new try-on result record for regeneration
+        const { data: newResult, error: createError } = await supabase
+            .from('try_on_results')
+            .insert({
+                user_id: userId,
+                product_image_id: originalResult.product_image_id,
+                model_photo_id: originalResult.model_photo_id,
+                status: 'pending',
+                credits_used: 5, // Regeneration costs 5 credits instead of 10
+                metadata: {
+                    is_regeneration: true,
+                    original_result_id: originalResultId
+                },
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            })
+            .select('id')
+            .single()
+
+        if (createError || !newResult) {
+            console.error('❌ Failed to create regeneration result record:', createError)
+            return {
+                success: false,
+                error: createError?.message || 'Failed to create regeneration record'
+            }
+        }
+
+        console.log('✅ Created regeneration result record:', newResult.id)
+        return {
+            success: true,
+            data: { id: newResult.id }
+        }
+    } catch (error) {
+        console.error('❌ Error in regenerateTryOnResult:', error)
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+        }
+    }
+}
+
+// Complete regeneration flow - creates new result and processes it
+export async function processRegenerateResult(
+    originalResultId: string,
+    userId: string
+): Promise<{ success: boolean; data?: { jobId: string }; error?: string }> {
+    try {
+        console.log('🔄 Starting complete regeneration flow for result:', originalResultId)
+
+        // Step 1: Create the regeneration record
+        const createResult = await regenerateTryOnResult(originalResultId, userId)
+        if (!createResult.success || !createResult.data) {
+            return {
+                success: false,
+                error: createResult.error || 'Failed to create regeneration record'
+            }
+        }
+
+        const newJobId = createResult.data.id
+        console.log('✅ Created regeneration job:', newJobId)
+
+        // Step 2: Get the original result details for processing
+        const { data: originalResult, error: fetchError } = await supabase
+            .from('try_on_results')
+            .select(`
+                product_image_id,
+                model_photo_id,
+                product_images!inner(id, image_url),
+                model_photos!inner(id, image_url)
+            `)
+            .eq('id', originalResultId)
+            .eq('user_id', userId)
+            .single()
+
+        if (fetchError || !originalResult) {
+            console.error('❌ Failed to fetch original result details:', fetchError)
+            return {
+                success: false,
+                error: 'Failed to fetch original result details'
+            }
+        }
+
+        console.log('✅ Retrieved original result details for processing')
+
+        return {
+            success: true,
+            data: {
+                jobId: newJobId
+            }
+        }
+    } catch (error) {
+        console.error('❌ Error in processRegenerateResult:', error)
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+        }
+    }
+}

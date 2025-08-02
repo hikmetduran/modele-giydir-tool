@@ -32,6 +32,7 @@ interface TryOnRequest {
     modelPhotoId: string
     jobId: string
     category?: string
+    isRegeneration?: boolean
 }
 
 interface TryOnInput {
@@ -66,7 +67,8 @@ async function submitTryOnRequest(input: TryOnInput): Promise<{ requestId: strin
                 garment_image: input.garmentImageUrl,
                 category: input.category || "auto",
                 mode: "quality",
-                output_format: "png"
+                output_format: "png",
+                seed: Math.floor(Math.random() * 100000000) + 1
             }
         })
 
@@ -175,7 +177,8 @@ async function processTryOnWithUpdates(
     input: TryOnInput,
     supabase: any,
     jobId: string,
-    userId: string
+    userId: string,
+    creditCost: number = 10
 ): Promise<TryOnResult> {
     try {
         // Update job status to processing
@@ -224,8 +227,8 @@ async function processTryOnWithUpdates(
                 // Refund credits when processing fails
                 await supabase.rpc('refund_credits', {
                     p_user_id: userId,
-                    p_amount: 10,
-                    p_description: 'Try-on generation refund - processing failed',
+                    p_amount: creditCost,
+                    p_description: `Try-on ${creditCost === 5 ? 'regeneration' : 'generation'} refund - processing failed`,
                     p_try_on_result_id: jobId
                 })
 
@@ -254,8 +257,8 @@ async function processTryOnWithUpdates(
             // Refund credits when request times out
             await supabase.rpc('refund_credits', {
                 p_user_id: userId,
-                p_amount: 10,
-                p_description: 'Try-on generation refund - request timed out',
+                p_amount: creditCost,
+                p_description: `Try-on ${creditCost === 5 ? 'regeneration' : 'generation'} refund - request timed out`,
                 p_try_on_result_id: jobId
             })
 
@@ -359,8 +362,8 @@ async function processTryOnWithUpdates(
             // Refund credits when no result image found
             await supabase.rpc('refund_credits', {
                 p_user_id: userId,
-                p_amount: 10,
-                p_description: 'Try-on generation refund - no result image found',
+                p_amount: creditCost,
+                p_description: `Try-on ${creditCost === 5 ? 'regeneration' : 'generation'} refund - no result image found`,
                 p_try_on_result_id: jobId
             })
 
@@ -386,8 +389,8 @@ async function processTryOnWithUpdates(
         // Refund credits when processing fails with exception
         await supabase.rpc('refund_credits', {
             p_user_id: userId,
-            p_amount: 10,
-            p_description: 'Try-on generation refund - processing exception',
+            p_amount: creditCost,
+            p_description: `Try-on ${creditCost === 5 ? 'regeneration' : 'generation'} refund - processing exception`,
             p_try_on_result_id: jobId
         })
 
@@ -414,6 +417,10 @@ serve(async (req) => {
         return new Response('ok', { headers: corsHeaders })
     }
 
+    let supabase: any
+    let user: any
+    let body: TryOnRequest | undefined
+
     try {
         // Get the authorization header
         const authHeader = req.headers.get('Authorization')
@@ -422,7 +429,7 @@ serve(async (req) => {
         }
 
         // Create Supabase client
-        const supabase = createClient(
+        supabase = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_ANON_KEY') ?? '',
             {
@@ -431,22 +438,34 @@ serve(async (req) => {
         )
 
         // Get user from auth
-        const { data: { user }, error: authError } = await supabase.auth.getUser()
-        if (authError || !user) {
+        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
+        if (authError || !authUser) {
             throw new Error('Unauthorized')
         }
+        user = authUser
 
         // Parse request body
-        const body: TryOnRequest = await req.json()
-        const { productImageId, modelPhotoId, jobId, category } = body
+        body = await req.json() as TryOnRequest
+        const { productImageId, modelPhotoId, jobId, category, isRegeneration } = body
 
-        console.log('🚀 Processing try-on request:', { productImageId, modelPhotoId, jobId, category, userId: user.id })
+        console.log('🚀 Processing try-on request:', {
+            productImageId,
+            modelPhotoId,
+            jobId,
+            category,
+            isRegeneration,
+            userId: user.id
+        })
+
+        // Determine credit cost based on whether this is a regeneration
+        const creditCost = isRegeneration ? 5 : 10
+        const description = isRegeneration ? 'Try-on regeneration' : 'Try-on generation'
 
         // Check user's credit balance and deduct credits before processing
         const { data: deductResult, error: deductError } = await supabase.rpc('deduct_credits', {
             p_user_id: user.id,
-            p_amount: 10,
-            p_description: 'Try-on generation',
+            p_amount: creditCost,
+            p_description: description,
             p_try_on_result_id: jobId
         })
 
@@ -474,8 +493,8 @@ serve(async (req) => {
             // Refund credits if product image not found
             await supabase.rpc('refund_credits', {
                 p_user_id: user.id,
-                p_amount: 10,
-                p_description: 'Try-on generation refund - product image not found',
+                p_amount: creditCost,
+                p_description: `${description} refund - product image not found`,
                 p_try_on_result_id: jobId
             })
             throw new Error('Product image not found')
@@ -492,8 +511,8 @@ serve(async (req) => {
             // Refund credits if model photo not found
             await supabase.rpc('refund_credits', {
                 p_user_id: user.id,
-                p_amount: 10,
-                p_description: 'Try-on generation refund - model photo not found',
+                p_amount: creditCost,
+                p_description: `${description} refund - model photo not found`,
                 p_try_on_result_id: jobId
             })
             throw new Error('Model photo not found')
@@ -508,7 +527,8 @@ serve(async (req) => {
             },
             supabase,
             jobId,
-            user.id
+            user.id,
+            creditCost
         )
 
         return new Response(
@@ -522,12 +542,13 @@ serve(async (req) => {
         console.error('❌ Edge function error:', error)
 
         // Try to refund credits if we have user and jobId
-        if (user?.id && body?.jobId) {
+        if (supabase && user?.id && body?.jobId) {
             try {
+                const errorCreditCost = body.isRegeneration ? 5 : 10
                 await supabase.rpc('refund_credits', {
                     p_user_id: user.id,
-                    p_amount: 10,
-                    p_description: 'Try-on generation refund - edge function error',
+                    p_amount: errorCreditCost,
+                    p_description: `Try-on ${errorCreditCost === 5 ? 'regeneration' : 'generation'} refund - edge function error`,
                     p_try_on_result_id: body.jobId
                 })
             } catch (refundError) {
@@ -546,4 +567,4 @@ serve(async (req) => {
             }
         )
     }
-}) 
+})

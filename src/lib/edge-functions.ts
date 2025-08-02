@@ -5,6 +5,7 @@ export interface TryOnRequest {
     modelPhotoId: string
     jobId: string
     category?: string
+    isRegeneration?: boolean
 }
 
 export interface TryOnResult {
@@ -18,17 +19,25 @@ export async function processTryOnWithEdgeFunction(
     productImageId: string,
     modelPhotoId: string,
     jobId: string,
-    category?: string
+    category?: string,
+    isRegeneration?: boolean
 ): Promise<TryOnResult> {
     try {
-        console.log('🚀 Calling edge function for try-on processing:', { productImageId, modelPhotoId, jobId, category })
+        console.log('🚀 Calling edge function for try-on processing:', {
+            productImageId,
+            modelPhotoId,
+            jobId,
+            category,
+            isRegeneration
+        })
 
         const { data, error } = await supabase.functions.invoke('process-try-on', {
             body: {
                 productImageId,
                 modelPhotoId,
                 jobId,
-                category
+                category,
+                isRegeneration
             }
         })
 

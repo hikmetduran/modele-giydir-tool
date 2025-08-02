@@ -14,6 +14,7 @@ import { createTryOnResult, getTryOnResultStatus } from '@/lib/supabase-storage'
 import { useWallet } from '@/lib/hooks/useWallet'
 import FileUpload from '@/components/upload/FileUpload'
 import ModelSelection from '@/components/model/ModelSelection'
+import RegenerateButton from '@/components/ui/RegenerateButton'
 
 interface ProcessingFlowProps {
     className?: string
@@ -29,6 +30,7 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
         results: []
     })
     const [selectedGarmentType, setSelectedGarmentType] = useState<GarmentType>('tops')
+    const [regeneratingJobs, setRegeneratingJobs] = useState<Set<string>>(new Set())
 
     // Removed unused isLoading state
 
@@ -359,6 +361,203 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
         })
     }
 
+    // Handle regeneration of individual results
+    const handleRegenerateResult = async (jobId: string) => {
+        if (!user || !wallet || wallet.credits < 5) {
+            alert('Insufficient credits. You need 5 credits to regenerate a result.')
+            return
+        }
+
+        const job = appState.currentJobs?.find(j => j.id === jobId)
+        if (!job || job.status !== 'completed' || !job.resultUrl) {
+            alert('Cannot regenerate this result.')
+            return
+        }
+
+        try {
+            setRegeneratingJobs(prev => new Set([...prev, jobId]))
+
+            // Create a new processing job for regeneration
+            const newJobId = generateId()
+            const regenerationJob: ProcessingJob = {
+                id: newJobId,
+                productImage: job.productImage,
+                modelImage: job.modelImage,
+                status: 'pending',
+                progress: 0,
+                createdAt: new Date()
+            }
+
+            // Add the regeneration job to current jobs
+            setAppState(prev => ({
+                ...prev,
+                currentJobs: prev.currentJobs ? [...prev.currentJobs, regenerationJob] : [regenerationJob]
+            }))
+
+            // Create try-on result record
+            const createResult = await createTryOnResult(
+                user.id,
+                job.productImage.id,
+                job.modelImage.id
+            )
+
+            if (!createResult.success || !createResult.data) {
+                throw new Error(`Failed to create regeneration result: ${createResult.error}`)
+            }
+
+            const dbJobId = createResult.data.id
+            console.log('✅ Created regeneration result record:', dbJobId)
+
+            // Process the regeneration
+            await processRegenerationWithAI(regenerationJob, dbJobId, true)
+
+        } catch (error) {
+            console.error('Regeneration failed:', error)
+            alert(error instanceof Error ? error.message : 'Regeneration failed')
+            
+            // Remove the failed regeneration job
+            setAppState(prev => ({
+                ...prev,
+                currentJobs: prev.currentJobs?.filter(j => j.id !== jobId)
+            }))
+        } finally {
+            setRegeneratingJobs(prev => {
+                const newSet = new Set(prev)
+                newSet.delete(jobId)
+                return newSet
+            })
+        }
+    }
+
+    // Process regeneration with AI (similar to processWithAI but for regeneration)
+    const processRegenerationWithAI = async (job: ProcessingJob, dbJobId: string, isRegeneration: boolean = false) => {
+        if (!user) return
+
+        try {
+            console.log('🔄 Starting regeneration processing for job:', job.id)
+
+            // Update job status to processing
+            const updateJob = (updates: Partial<ProcessingJob>) => {
+                setAppState(prev => ({
+                    ...prev,
+                    currentJobs: prev.currentJobs?.map(j => j.id === job.id ? { ...j, ...updates } : j)
+                }))
+            }
+
+            updateJob({
+                progress: 10,
+                status: 'processing'
+            })
+
+            // Call edge function to process the regeneration
+            const result = await processTryOnWithEdgeFunction(
+                job.productImage.id,
+                job.modelImage.id,
+                dbJobId,
+                selectedGarmentType,
+                isRegeneration
+            )
+
+            if (result.success) {
+                console.log('✅ Regeneration edge function processing started successfully')
+
+                // Poll for completion
+                await pollForRegenerationCompletion(dbJobId, job.id, updateJob)
+            } else {
+                console.error('❌ Regeneration edge function processing failed:', result.error)
+                updateJob({
+                    progress: 0,
+                    status: 'failed',
+                    completedAt: new Date(),
+                    error: result.error
+                })
+                refreshWallet()
+            }
+        } catch (error) {
+            console.error('❌ Regeneration processing error:', error)
+
+            const updateJob = (updates: Partial<ProcessingJob>) => {
+                setAppState(prev => ({
+                    ...prev,
+                    currentJobs: prev.currentJobs?.map(j => j.id === job.id ? { ...j, ...updates } : j)
+                }))
+            }
+
+            updateJob({
+                progress: 0,
+                status: 'failed',
+                completedAt: new Date(),
+                error: error instanceof Error ? error.message : 'Unknown error'
+            })
+            refreshWallet()
+        }
+    }
+
+    // Poll for regeneration completion
+    const pollForRegenerationCompletion = async (
+        jobId: string,
+        processingJobId: string,
+        updateJob: (updates: Partial<ProcessingJob>) => void
+    ) => {
+        if (!user) return
+
+        let attempts = 0
+        const maxAttempts = 120 // 10 minutes max
+
+        while (attempts < maxAttempts) {
+            try {
+                const statusResult = await getTryOnResultStatus(jobId, user.id)
+
+                if (statusResult.success && statusResult.data) {
+                    const { status, result_image_url, error_message } = statusResult.data
+
+                    if (status === 'completed') {
+                        console.log('✅ Regeneration completed successfully')
+                        updateJob({
+                            progress: 100,
+                            status: 'completed',
+                            completedAt: new Date(),
+                            resultUrl: result_image_url as string
+                        })
+                        refreshWallet()
+                        return
+                    } else if (status === 'failed') {
+                        console.error('❌ Regeneration failed:', error_message)
+                        updateJob({
+                            progress: 0,
+                            status: 'failed',
+                            completedAt: new Date(),
+                            error: (error_message as string) || 'Regeneration failed'
+                        })
+                        refreshWallet()
+                        return
+                    } else if (status === 'processing') {
+                        const progress = Math.min(90, 20 + (attempts * 2))
+                        updateJob({
+                            progress,
+                            status: 'processing'
+                        })
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Error polling for regeneration completion:', error)
+            }
+
+            attempts++
+            await new Promise(resolve => setTimeout(resolve, 5000))
+        }
+
+        // Timeout
+        console.error('❌ Regeneration timed out')
+        updateJob({
+            progress: 0,
+            status: 'failed',
+            completedAt: new Date(),
+            error: 'Regeneration timed out'
+        })
+        refreshWallet()
+    }
+
     // Calculate overall progress for multiple jobs
     const getOverallProgress = () => {
         if (!appState.currentJobs || appState.currentJobs.length === 0) return 0
@@ -569,6 +768,18 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
                                                     </div>
                                                 )}
                                             </div>
+                                            
+                                            {/* Regenerate Button for completed results */}
+                                            {job.status === 'completed' && job.resultUrl && (
+                                                <div className="mt-3 flex justify-center">
+                                                    <RegenerateButton
+                                                        onRegenerate={() => handleRegenerateResult(job.id)}
+                                                        disabled={!wallet || wallet.credits < 5}
+                                                        loading={regeneratingJobs.has(job.id)}
+                                                        size="sm"
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 ))}
@@ -609,11 +820,29 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
                         <div className="text-xs text-gray-500">
                             You have {wallet?.credits || 0} credits
                         </div>
+                        <div className="text-xs text-purple-600 mt-1">
+                            💡 Regeneration costs only 5 credits per result
+                        </div>
                         {wallet && wallet.credits < appState.uploadedImages.length * 10 && (
                             <div className="text-xs text-red-600 mt-1">
                                 Insufficient credits
                             </div>
                         )}
+                    </div>
+                )}
+
+                {/* Credits Info for Results Step */}
+                {appState.currentStep === 'results' && appState.currentJobs && (
+                    <div className="text-sm text-gray-600 text-center">
+                        <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                            <div className="font-medium text-purple-800">💡 Pro Tip</div>
+                            <div className="text-xs text-purple-700 mt-1">
+                                Not happy with a result? Use the regenerate button for only 5 credits instead of 10!
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                                You have {wallet?.credits || 0} credits remaining
+                            </div>
+                        </div>
                     </div>
                 )}
 

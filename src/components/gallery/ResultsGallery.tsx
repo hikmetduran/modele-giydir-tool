@@ -5,7 +5,10 @@ import { Search, Download, Heart, Calendar, Clock, User, Check } from 'lucide-re
 import Image from 'next/image'
 import { cn, formatDate, formatTime, groupByDate, sortDateGroups, downloadImage, downloadMultipleImages } from '@/lib/utils'
 import { useAuth } from '@/components/auth/AuthProvider'
-import { getUserTryOnResultsGroupedByDate } from '@/lib/supabase-storage'
+import { getUserTryOnResultsGroupedByDate, processRegenerateResult, getTryOnResultStatus } from '@/lib/supabase-storage'
+import { processTryOnWithEdgeFunction } from '@/lib/edge-functions'
+import { useWallet } from '@/lib/hooks/useWallet'
+import RegenerateButton from '@/components/ui/RegenerateButton'
 
 interface TryOnResult {
     id: string
@@ -43,6 +46,7 @@ type SortOrder = 'asc' | 'desc'
 
 export default function ResultsGallery({ className }: ResultsGalleryProps) {
     const { user } = useAuth()
+    const { wallet, refreshWallet } = useWallet()
     const [results, setResults] = useState<TryOnResult[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -53,6 +57,7 @@ export default function ResultsGallery({ className }: ResultsGalleryProps) {
     const [filterGender, setFilterGender] = useState<string>('all')
     const [favorites, setFavorites] = useState<Set<string>>(new Set())
     const [showBulkActions, setShowBulkActions] = useState(false)
+    const [regeneratingResults, setRegeneratingResults] = useState<Set<string>>(new Set())
 
     // Load favorites from localStorage
     const loadFavorites = () => {
@@ -226,6 +231,93 @@ export default function ResultsGallery({ className }: ResultsGalleryProps) {
         deselectAll()
     }
 
+    // Handle regeneration
+    const handleRegenerate = async (resultId: string) => {
+        if (!user || !wallet || wallet.credits < 5) {
+            alert('Insufficient credits. You need 5 credits to regenerate a result.')
+            return
+        }
+
+        try {
+            setRegeneratingResults(prev => new Set([...prev, resultId]))
+
+            // Step 1: Create regeneration record
+            const regenerateResult = await processRegenerateResult(resultId, user.id)
+            if (!regenerateResult.success || !regenerateResult.data) {
+                throw new Error(regenerateResult.error || 'Failed to start regeneration')
+            }
+
+            const newJobId = regenerateResult.data.jobId
+
+            // Step 2: Get original result details for processing
+            const originalResult = results.find(r => r.id === resultId)
+            if (!originalResult) {
+                throw new Error('Original result not found')
+            }
+
+            // Step 3: Process with edge function
+            const processResult = await processTryOnWithEdgeFunction(
+                originalResult.product_images.id,
+                originalResult.model_photos.id,
+                newJobId,
+                undefined, // category
+                true // isRegeneration
+            )
+
+            if (!processResult.success) {
+                throw new Error(processResult.error || 'Processing failed')
+            }
+
+            // Step 4: Poll for completion
+            await pollForRegenerationCompletion(newJobId)
+
+        } catch (error) {
+            console.error('Regeneration failed:', error)
+            alert(error instanceof Error ? error.message : 'Regeneration failed')
+        } finally {
+            setRegeneratingResults(prev => {
+                const newSet = new Set(prev)
+                newSet.delete(resultId)
+                return newSet
+            })
+        }
+    }
+
+    // Poll for regeneration completion
+    const pollForRegenerationCompletion = async (jobId: string) => {
+        if (!user) return
+
+        let attempts = 0
+        const maxAttempts = 120 // 10 minutes max
+
+        while (attempts < maxAttempts) {
+            try {
+                const statusResult = await getTryOnResultStatus(jobId, user.id)
+
+                if (statusResult.success && statusResult.data) {
+                    const { status, result_image_url } = statusResult.data
+
+                    if (status === 'completed' && result_image_url) {
+                        // Refresh the results to show the new regenerated result
+                        await loadResults()
+                        refreshWallet()
+                        return
+                    } else if (status === 'failed') {
+                        throw new Error('Regeneration processing failed')
+                    }
+                }
+            } catch (error) {
+                console.error('Error polling for regeneration completion:', error)
+                break
+            }
+
+            attempts++
+            await new Promise(resolve => setTimeout(resolve, 5000)) // Wait 5 seconds
+        }
+
+        throw new Error('Regeneration timed out')
+    }
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
@@ -396,6 +488,9 @@ export default function ResultsGallery({ className }: ResultsGalleryProps) {
                                         isFavorite={favorites.has(result.id)}
                                         onToggleSelection={() => toggleSelection(result.id)}
                                         onToggleFavorite={() => toggleFavorite(result.id)}
+                                        onRegenerate={handleRegenerate}
+                                        isRegenerating={regeneratingResults.has(result.id)}
+                                        canRegenerate={wallet ? wallet.credits >= 5 : false}
                                     />
                                 ))}
                             </div>
@@ -413,9 +508,21 @@ interface ResultCardProps {
     isFavorite: boolean
     onToggleSelection: () => void
     onToggleFavorite: () => void
+    onRegenerate: (resultId: string) => Promise<void>
+    isRegenerating: boolean
+    canRegenerate: boolean
 }
 
-function ResultCard({ result, isSelected, isFavorite, onToggleSelection, onToggleFavorite }: ResultCardProps) {
+function ResultCard({
+    result,
+    isSelected,
+    isFavorite,
+    onToggleSelection,
+    onToggleFavorite,
+    onRegenerate,
+    isRegenerating,
+    canRegenerate
+}: ResultCardProps) {
     const downloadResult = () => {
         downloadImage(result.result_image_url, `tryon-${result.product_images.original_filename}-${result.model_photos.name}.png`)
     }
@@ -476,6 +583,13 @@ function ResultCard({ result, isSelected, isFavorite, onToggleSelection, onToggl
 
                 {/* Actions */}
                 <div className="flex items-center space-x-2">
+                    <RegenerateButton
+                        onRegenerate={() => onRegenerate(result.id)}
+                        disabled={!canRegenerate}
+                        loading={isRegenerating}
+                        size="sm"
+                        className="text-xs"
+                    />
                     <button
                         onClick={onToggleFavorite}
                         className={cn(

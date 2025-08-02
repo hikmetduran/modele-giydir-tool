@@ -7,7 +7,7 @@ Add these to your .env.local file:
 ```
 # Fal AI Configuration
 # Get your API key from https://fal.ai/
-NEXT_PUBLIC_FAL_KEY=your_fal_api_key_here
+FAL_API_KEY=your_fal_api_key_here
 
 # Supabase Configuration (if not already set)
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
@@ -20,7 +20,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 2. Sign up for an account
 3. Navigate to your dashboard
 4. Get your API key
-5. Add it to your .env.local file as NEXT_PUBLIC_FAL_KEY
+5. Add it to your .env.local file as FAL_API_KEY
 
 ## Pricing
 

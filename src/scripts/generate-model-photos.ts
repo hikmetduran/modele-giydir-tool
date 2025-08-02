@@ -13,7 +13,7 @@ import { readFileSync } from 'fs'
 
 // Configure Fal AI client
 fal.config({
-    credentials: process.env.NEXT_PUBLIC_FAL_KEY
+    credentials: process.env.FAL_API_KEY
 })
 
 interface ModelPrompt {
@@ -35,33 +35,42 @@ interface GenerationResult {
     error?: string
 }
 
-// FalAI minimax API types
-interface MinimaxInput {
+// FalAI hidream-i1-fast API types
+interface HidreamInput {
     prompt: string
-    aspect_ratio?: '1:1' | '16:9' | '4:3' | '3:2' | '2:3' | '3:4' | '9:16' | '21:9'
+    negative_prompt?: string
+    image_size?: 'square_hd' | 'square' | 'portrait_4_3' | 'portrait_16_9' | 'landscape_4_3' | 'landscape_16_9' | { width: number; height: number }
+    num_inference_steps?: number
+    seed?: number
+    sync_mode?: boolean
     num_images?: number
-    prompt_optimizer?: boolean
+    enable_safety_checker?: boolean
+    output_format?: 'jpeg' | 'png'
 }
 
-interface MinimaxOutput {
+interface HidreamOutput {
     images: Array<{
         url: string
-        file_name: string
         content_type: string
-        file_size: number
     }>
+    timings?: any
+    seed: number
+    has_nsfw_concepts: boolean[]
+    prompt: string
 }
 
 class ModelPhotoGenerator {
     private readonly BUCKET_NAME = 'model-photos'
-    private readonly ASPECT_RATIO = '2:3' as const // Portrait format suitable for fashion models
+    private readonly IMAGE_SIZE = 'portrait_4_3' as const // Portrait format suitable for fashion models
+    private readonly overwrite: boolean
 
-    constructor() {
+    constructor(overwrite: boolean = false) {
+        this.overwrite = overwrite
         this.validateEnvironment()
     }
 
     private validateEnvironment() {
-        const requiredEnvVars = ['NEXT_PUBLIC_FAL_KEY', 'SUPABASE_SERVICE_ROLE_KEY']
+        const requiredEnvVars = ['FAL_API_KEY', 'SUPABASE_SERVICE_ROLE_KEY']
         const missing = requiredEnvVars.filter(key => !process.env[key])
 
         if (missing.length > 0) {
@@ -71,7 +80,7 @@ class ModelPhotoGenerator {
 
     private async loadModelPrompts(): Promise<ModelPrompt[]> {
         try {
-            const promptsPath = join(process.cwd(), '..', 'resources', 'model-prompts.json')
+            const promptsPath = join(process.cwd(), 'resources', 'model-prompts.json')
             const promptsData = JSON.parse(readFileSync(promptsPath, 'utf8')) as ModelPromptsData
             return promptsData.model_photos
         } catch (error) {
@@ -105,15 +114,17 @@ class ModelPhotoGenerator {
         try {
             console.log(`🎨 Generating image for ${modelName}...`)
 
-            const input: MinimaxInput = {
+            const input: HidreamInput = {
                 prompt,
-                aspect_ratio: this.ASPECT_RATIO,
+                image_size: this.IMAGE_SIZE,
                 num_images: 1,
-                prompt_optimizer: true
+                num_inference_steps: 16,
+                enable_safety_checker: true,
+                output_format: 'jpeg'
             }
 
             // Submit request to FalAI
-            const result = await fal.queue.submit('fal-ai/minimax/image-01', { input })
+            const result = await fal.queue.submit('fal-ai/hidream-i1-fast', { input })
             console.log(`⏳ Request submitted for ${modelName}, request ID: ${result.request_id}`)
 
             // Poll for completion
@@ -121,7 +132,7 @@ class ModelPhotoGenerator {
             const maxAttempts = 60 // 5 minutes max (5 second intervals)
 
             while (attempts < maxAttempts) {
-                const status = await fal.queue.status('fal-ai/minimax/image-01', {
+                const status = await fal.queue.status('fal-ai/hidream-i1-fast', {
                     requestId: result.request_id,
                     logs: true
                 })
@@ -130,9 +141,9 @@ class ModelPhotoGenerator {
 
                 if (status.status === 'COMPLETED') {
                     // Get the result
-                    const output = await fal.queue.result('fal-ai/minimax/image-01', {
+                    const output = await fal.queue.result('fal-ai/hidream-i1-fast', {
                         requestId: result.request_id
-                    }) as { data: MinimaxOutput }
+                    }) as { data: HidreamOutput }
 
                     if (output.data?.images?.[0]?.url) {
                         console.log(`✅ Image generated successfully for ${modelName}`)
@@ -179,7 +190,7 @@ class ModelPhotoGenerator {
                 .from(this.BUCKET_NAME)
                 .upload(filePath, imageBlob, {
                     contentType: 'image/jpeg',
-                    upsert: false
+                    upsert: this.overwrite
                 })
 
             if (error) {
@@ -207,6 +218,20 @@ class ModelPhotoGenerator {
     private async saveToDatabase(model: ModelPrompt, imageUrl: string, imagePath: string): Promise<boolean> {
         try {
             console.log(`💾 Saving ${model.name} to database...`)
+
+            // If overwriting, delete existing records first
+            if (this.overwrite) {
+                const { error: deleteError } = await supabaseServer
+                    .from('model_photos')
+                    .delete()
+                    .eq('name', model.name)
+                    .eq('description', model.description)
+
+                if (deleteError) {
+                    console.error('❌ Error deleting existing record:', deleteError)
+                    // Continue with insert anyway, as the record might not exist
+                }
+            }
 
             const { error } = await supabaseServer
                 .from('model_photos')
@@ -240,11 +265,15 @@ class ModelPhotoGenerator {
         }
 
         try {
-            // Check if model already exists
-            const exists = await this.checkExistingModel(model.name, model.description)
-            if (exists) {
-                console.log(`⏭️  Skipping ${model.name} - already exists`)
-                return { ...result, success: true, error: 'Already exists' }
+            // Check if model already exists (skip check if overwrite is enabled)
+            if (!this.overwrite) {
+                const exists = await this.checkExistingModel(model.name, model.description)
+                if (exists) {
+                    console.log(`⏭️  Skipping ${model.name} - already exists`)
+                    return { ...result, success: true, error: 'Already exists' }
+                }
+            } else {
+                console.log(`🔄 Overwriting ${model.name}...`)
             }
 
             // Generate image with FalAI
@@ -346,7 +375,8 @@ class ModelPhotoGenerator {
 // Main execution
 async function main() {
     try {
-        const generator = new ModelPhotoGenerator()
+        const overwrite = process.argv.includes('--overwrite')
+        const generator = new ModelPhotoGenerator(overwrite)
         const results = await generator.generateAllModels()
         generator.printSummary(results)
 

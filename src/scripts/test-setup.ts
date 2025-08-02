@@ -29,7 +29,7 @@ async function testEnvironmentVariables() {
     console.log(colorize('🔍 Testing Environment Variables...', 'yellow'))
 
     const requiredEnvVars = [
-        'NEXT_PUBLIC_FAL_KEY',
+        'FAL_API_KEY',
         'SUPABASE_SERVICE_ROLE_KEY',
         'NEXT_PUBLIC_SUPABASE_URL',
         'NEXT_PUBLIC_SUPABASE_ANON_KEY'
@@ -130,19 +130,19 @@ async function testSupabaseConnection() {
 async function testFalAIKey() {
     console.log(colorize('🎨 Testing FalAI API Key...', 'yellow'))
 
-    const falKey = process.env.NEXT_PUBLIC_FAL_KEY
+    const falKey = process.env.FAL_API_KEY
 
     if (!falKey) {
-        console.log('  ❌ NEXT_PUBLIC_FAL_KEY not found in environment variables')
+        console.log('  ❌ FAL_API_KEY not found in environment variables')
         return false
     }
 
     if (falKey.length < 20) {
-        console.log('  ❌ NEXT_PUBLIC_FAL_KEY appears to be too short (invalid)')
+        console.log('  ❌ FAL_API_KEY appears to be too short (invalid)')
         return false
     }
 
-    console.log('  ✅ NEXT_PUBLIC_FAL_KEY format looks valid')
+    console.log('  ✅ FAL_API_KEY format looks valid')
     console.log('  ℹ️  Note: Actual API functionality will be tested during generation')
 
     return true

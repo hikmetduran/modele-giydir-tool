@@ -2,7 +2,7 @@ import { fal } from '@fal-ai/client'
 
 // Configure Fal AI client
 fal.config({
-    credentials: process.env.FAL_KEY || process.env.NEXT_PUBLIC_FAL_KEY
+    credentials: process.env.FAL_KEY || process.env.FAL_API_KEY
 })
 
 export interface TryOnInput {

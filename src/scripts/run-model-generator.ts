@@ -36,7 +36,7 @@ function checkEnvironment() {
     console.log(colorize('🔍 Checking environment...', 'yellow'))
 
     const requiredEnvVars = [
-        'NEXT_PUBLIC_FAL_KEY',
+        'FAL_API_KEY',
         'SUPABASE_SERVICE_ROLE_KEY',
         'NEXT_PUBLIC_SUPABASE_URL',
         'NEXT_PUBLIC_SUPABASE_ANON_KEY'
@@ -55,8 +55,9 @@ function checkEnvironment() {
 
 function checkModelPrompts() {
     console.log(colorize('📋 Checking model prompts file...', 'yellow'))
+    console.log('PATH: ' + process.cwd())
 
-    const promptsPath = join(process.cwd(), '..', 'resources', 'model-prompts.json')
+    const promptsPath = join(process.cwd(), 'resources', 'model-prompts.json')
 
     if (!existsSync(promptsPath)) {
         console.error(colorize(`❌ Model prompts file not found: ${promptsPath}`, 'red'))
@@ -80,12 +81,18 @@ function checkModelPrompts() {
 
 function printUsage() {
     console.log(colorize('Usage:', 'bright'))
-    console.log('  npm run generate-models     # Generate all model photos')
-    console.log('  npm run generate-models --dry-run  # Show what would be generated without actually generating')
+    console.log('  npm run generate-models                    # Generate all model photos')
+    console.log('  npm run generate-models -- --dry-run      # Show what would be generated without actually generating')
+    console.log('  npm run generate-models -- --overwrite    # Regenerate all models, including existing ones')
+    console.log('  npm run generate-models -- --dry-run --overwrite  # Preview what would be overwritten')
     console.log()
     console.log(colorize('Options:', 'bright'))
     console.log('  --dry-run    Show what would be generated without actually generating')
+    console.log('  --overwrite  Regenerate all models, including existing ones')
     console.log('  --help       Show this help message')
+    console.log()
+    console.log(colorize('Note:', 'yellow'))
+    console.log('  Use -- before options when running via npm (e.g., npm run generate-models -- --overwrite)')
     console.log()
 }
 
@@ -106,15 +113,19 @@ async function runGenerator() {
         console.log(colorize('🚀 Starting model photo generation...', 'green'))
         console.log()
 
-        // Check for dry run
+        // Check for dry run and overwrite flags
         const isDryRun = process.argv.includes('--dry-run')
+        const isOverwrite = process.argv.includes('--overwrite')
 
         if (isDryRun) {
             console.log(colorize('🔍 DRY RUN MODE - No images will be generated', 'yellow'))
+            if (isOverwrite) {
+                console.log(colorize('🔄 OVERWRITE MODE - Existing models would be regenerated', 'yellow'))
+            }
             console.log()
 
             // Load and display what would be generated
-            const promptsPath = join(process.cwd(), '..', 'resources', 'model-prompts.json')
+            const promptsPath = join(process.cwd(), 'resources', 'model-prompts.json')
             const fs = require('fs')
             const content = JSON.parse(fs.readFileSync(promptsPath, 'utf8'))
 
@@ -132,7 +143,7 @@ async function runGenerator() {
         // Import and run the generator
         const { ModelPhotoGenerator } = await import('./generate-model-photos')
 
-        const generator = new ModelPhotoGenerator()
+        const generator = new ModelPhotoGenerator(isOverwrite)
         const results = await generator.generateAllModels()
         generator.printSummary(results)
 

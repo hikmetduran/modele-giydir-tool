@@ -64,7 +64,7 @@ async function submitTryOnRequest(input: TryOnInput): Promise<{ requestId: strin
             input: {
                 model_image: input.modelImageUrl,
                 garment_image: input.garmentImageUrl,
-                category: input.category || "tops",
+                category: input.category || "auto",
                 mode: "quality",
                 output_format: "png"
             }

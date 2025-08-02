@@ -2,11 +2,32 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
-import { Check, Users, Search, Loader2, Shirt, Square, User } from 'lucide-react'
+import { Check, Users, Search, Loader2, Shirt } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ModelImage, Gender } from '@/lib/types'
 import { GarmentType } from '@/lib/database/types/model_photos'
 import { getAllModelImages } from '@/lib/models'
+
+// Custom icon components for garment types
+const PantsIcon = ({ className, selected }: { className?: string; selected?: boolean }) => (
+    <Image
+        src="/icon-pants.svg"
+        alt="Pants"
+        width={16}
+        height={16}
+        className={cn(className, selected && "brightness-0 invert")}
+    />
+)
+
+const DressIcon = ({ className, selected }: { className?: string; selected?: boolean }) => (
+    <Image
+        src="/icon-dress.svg"
+        alt="Dress"
+        width={16}
+        height={16}
+        className={cn(className, selected && "brightness-0 invert")}
+    />
+)
 
 interface ModelSelectionProps {
     onSelect: (model: ModelImage, garmentType?: GarmentType) => void
@@ -124,25 +145,32 @@ export default function ModelSelection({
                 <div className="flex items-center justify-center space-x-2">
                     {([
                         { type: 'tops' as GarmentType, icon: Shirt, label: 'Tops' },
-                        { type: 'bottoms' as GarmentType, icon: Square, label: 'Bottoms' },
-                        { type: 'one-pieces' as GarmentType, icon: User, label: 'One-pieces' }
-                    ]).map(({ type, icon: Icon, label }) => (
-                        <button
-                            key={type}
-                            onClick={() => setSelectedGarmentType(type)}
-                            disabled={loading}
-                            className={cn(
-                                'flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium transition-colors',
-                                selectedGarmentType === type
-                                    ? 'bg-purple-600 text-white'
-                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300',
-                                'disabled:opacity-50 disabled:cursor-not-allowed'
-                            )}
-                        >
-                            <Icon className="h-4 w-4" />
-                            <span>{label}</span>
-                        </button>
-                    ))}
+                        { type: 'bottoms' as GarmentType, icon: PantsIcon, label: 'Bottoms' },
+                        { type: 'one-pieces' as GarmentType, icon: DressIcon, label: 'One-pieces' }
+                    ]).map(({ type, icon: Icon, label }) => {
+                        const isSelected = selectedGarmentType === type
+                        return (
+                            <button
+                                key={type}
+                                onClick={() => setSelectedGarmentType(type)}
+                                disabled={loading}
+                                className={cn(
+                                    'flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium transition-colors',
+                                    isSelected
+                                        ? 'bg-purple-600 text-white'
+                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300',
+                                    'disabled:opacity-50 disabled:cursor-not-allowed'
+                                )}
+                            >
+                                {type === 'tops' ? (
+                                    <Icon className="h-4 w-4" />
+                                ) : (
+                                    <Icon className="h-4 w-4" selected={isSelected} />
+                                )}
+                                <span>{label}</span>
+                            </button>
+                        )
+                    })}
                 </div>
             </div>
 

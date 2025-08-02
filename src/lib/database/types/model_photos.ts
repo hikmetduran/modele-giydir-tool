@@ -1,6 +1,11 @@
 import { Gender } from './common';
 
 /**
+ * Garment types that can be worn by models
+ */
+export type GarmentType = 'tops' | 'bottoms' | 'one-pieces';
+
+/**
  * Model Photos table - AI-generated model images for try-on
  */
 export interface ModelPhoto {
@@ -11,6 +16,7 @@ export interface ModelPhoto {
     image_path: string;
     gender?: Gender;
     body_type?: string;
+    garment_types: GarmentType[];
     is_active: boolean;
     sort_order: number;
     created_at: string;
@@ -26,6 +32,7 @@ export interface ModelPhotoInput {
     image_path: string;
     gender?: Gender;
     body_type?: string;
+    garment_types: GarmentType[];
     is_active?: boolean;
     sort_order?: number;
 }
@@ -40,6 +47,7 @@ export interface ModelPhotoUpdate {
     image_path?: string;
     gender?: Gender;
     body_type?: string;
+    garment_types?: GarmentType[];
     is_active?: boolean;
     sort_order?: number;
 }
@@ -54,6 +62,7 @@ CREATE TABLE IF NOT EXISTS public.model_photos (
   image_path TEXT NOT NULL,
   gender TEXT CHECK (gender IN ('male', 'female', 'unisex')),
   body_type TEXT,
+  garment_types TEXT[] NOT NULL DEFAULT '{}',
   is_active BOOLEAN DEFAULT true,
   sort_order INTEGER DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
@@ -63,4 +72,5 @@ CREATE TABLE IF NOT EXISTS public.model_photos (
 CREATE INDEX IF NOT EXISTS idx_model_photos_gender ON public.model_photos(gender);
 CREATE INDEX IF NOT EXISTS idx_model_photos_active ON public.model_photos(is_active);
 CREATE INDEX IF NOT EXISTS idx_model_photos_sort ON public.model_photos(sort_order);
+CREATE INDEX IF NOT EXISTS idx_model_photos_garment_types ON public.model_photos USING GIN(garment_types);
 `;

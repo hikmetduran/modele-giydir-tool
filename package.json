@@ -16,7 +16,8 @@
         "db:validate": "tsx src/lib/database/cli/validate-schema.ts",
         "db:sync-types": "tsx src/lib/database/cli/sync-types.ts",
         "db:setup": "tsx src/lib/database/cli/index.ts setup",
-        "db:info": "tsx src/lib/database/cli/index.ts info"
+        "db:info": "tsx src/lib/database/cli/index.ts info",
+        "db:migrate-garment-types": "tsx src/scripts/apply-garment-types-migration.ts"
     },
     "dependencies": {
         "@fal-ai/client": "^1.5.0",

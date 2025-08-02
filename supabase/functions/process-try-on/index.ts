@@ -31,11 +31,13 @@ interface TryOnRequest {
     productImageId: string
     modelPhotoId: string
     jobId: string
+    category?: string
 }
 
 interface TryOnInput {
     modelImageUrl: string
     garmentImageUrl: string
+    category?: string
 }
 
 interface TryOnResult {
@@ -62,6 +64,8 @@ async function submitTryOnRequest(input: TryOnInput): Promise<{ requestId: strin
             input: {
                 model_image: input.modelImageUrl,
                 garment_image: input.garmentImageUrl,
+                category: input.category || "tops",
+                mode: "quality",
                 output_format: "png"
             }
         })
@@ -434,9 +438,9 @@ serve(async (req) => {
 
         // Parse request body
         const body: TryOnRequest = await req.json()
-        const { productImageId, modelPhotoId, jobId } = body
+        const { productImageId, modelPhotoId, jobId, category } = body
 
-        console.log('🚀 Processing try-on request:', { productImageId, modelPhotoId, jobId, userId: user.id })
+        console.log('🚀 Processing try-on request:', { productImageId, modelPhotoId, jobId, category, userId: user.id })
 
         // Check user's credit balance and deduct credits before processing
         const { data: deductResult, error: deductError } = await supabase.rpc('deduct_credits', {
@@ -499,7 +503,8 @@ serve(async (req) => {
         const result = await processTryOnWithUpdates(
             {
                 modelImageUrl: modelPhoto.image_url,
-                garmentImageUrl: productImage.image_url
+                garmentImageUrl: productImage.image_url,
+                category: category
             },
             supabase,
             jobId,

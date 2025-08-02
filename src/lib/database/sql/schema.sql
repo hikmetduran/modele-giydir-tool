@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS public.model_photos (
   image_path TEXT NOT NULL,
   gender TEXT CHECK (gender IN ('male', 'female', 'unisex')),
   body_type TEXT,
+  garment_types TEXT[] NOT NULL DEFAULT '{}',
   is_active BOOLEAN DEFAULT true,
   sort_order INTEGER DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
@@ -90,6 +91,7 @@ CREATE TABLE IF NOT EXISTS public.credit_transactions (
 CREATE INDEX IF NOT EXISTS idx_model_photos_gender ON public.model_photos(gender);
 CREATE INDEX IF NOT EXISTS idx_model_photos_active ON public.model_photos(is_active);
 CREATE INDEX IF NOT EXISTS idx_model_photos_sort ON public.model_photos(sort_order);
+CREATE INDEX IF NOT EXISTS idx_model_photos_garment_types ON public.model_photos USING GIN(garment_types);
 
 CREATE INDEX IF NOT EXISTS idx_product_images_user_id ON public.product_images(user_id);
 CREATE INDEX IF NOT EXISTS idx_product_images_created_at ON public.product_images(created_at DESC);

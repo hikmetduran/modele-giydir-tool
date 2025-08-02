@@ -5,6 +5,7 @@ import { Upload, Users, Sparkles, Download, ArrowRight, ArrowLeft } from 'lucide
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { SelectableImage, ModelImage, ProcessingJob, AppState } from '@/lib/types'
+import { GarmentType } from '@/lib/database/types/model_photos'
 import { generateId } from '@/lib/utils'
 import { saveAppState, getAppState } from '@/lib/storage'
 import { useAuth } from '@/components/auth/AuthProvider'
@@ -27,6 +28,7 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
         processingHistory: [],
         results: []
     })
+    const [selectedGarmentType, setSelectedGarmentType] = useState<GarmentType>('tops')
 
     // Removed unused isLoading state
 
@@ -57,11 +59,14 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
         }))
     }, [])
 
-    const handleModelSelect = useCallback((model: ModelImage) => {
+    const handleModelSelect = useCallback((model: ModelImage, garmentType?: GarmentType) => {
         setAppState(prev => ({
             ...prev,
             selectedModel: model
         }))
+        if (garmentType) {
+            setSelectedGarmentType(garmentType)
+        }
     }, [])
 
     const handleNext = () => {
@@ -163,7 +168,8 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
             const result = await processTryOnWithEdgeFunction(
                 job.productImage.id,
                 job.modelImage.id,
-                jobId
+                jobId,
+                selectedGarmentType
             )
 
             if (result.success) {

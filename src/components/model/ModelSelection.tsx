@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
-import { Check, Users, Search, Loader2 } from 'lucide-react'
+import { Check, Users, Search, Loader2, Shirt, Square, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ModelImage, Gender } from '@/lib/types'
+import { GarmentType } from '@/lib/database/types/model_photos'
 import { getAllModelImages } from '@/lib/models'
 
 interface ModelSelectionProps {
-    onSelect: (model: ModelImage) => void
+    onSelect: (model: ModelImage, garmentType?: GarmentType) => void
     selectedModel?: ModelImage
     className?: string
 }
@@ -20,6 +21,7 @@ export default function ModelSelection({
 }: ModelSelectionProps) {
     const [searchTerm, setSearchTerm] = useState('')
     const [selectedGender, setSelectedGender] = useState<Gender | 'all'>('all')
+    const [selectedGarmentType, setSelectedGarmentType] = useState<GarmentType>('tops')
     const [models, setModels] = useState<ModelImage[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -47,6 +49,10 @@ export default function ModelSelection({
         .filter(model => {
             if (selectedGender === 'all') return true
             return model.gender === selectedGender
+        })
+        .filter(model => {
+            // Filter by garment type - model must support the selected garment type
+            return model.garment_types && model.garment_types.includes(selectedGarmentType)
         })
         .filter(
             model =>
@@ -78,7 +84,8 @@ export default function ModelSelection({
                     Choose from our collection of diverse models to see how your product looks
                 </p> */}
 
-                <div className="flex justify-between items-center">
+                {/* First Row: Search Bar and Gender Filter */}
+                <div className="flex justify-between items-center mb-4">
                     {/* Search Bar */}
                     <div className="relative w-full max-w-xs">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -112,6 +119,31 @@ export default function ModelSelection({
                         ))}
                     </div>
                 </div>
+
+                {/* Second Row: Garment Type Filter (Centered) */}
+                <div className="flex items-center justify-center space-x-2">
+                    {([
+                        { type: 'tops' as GarmentType, icon: Shirt, label: 'Tops' },
+                        { type: 'bottoms' as GarmentType, icon: Square, label: 'Bottoms' },
+                        { type: 'one-pieces' as GarmentType, icon: User, label: 'One-pieces' }
+                    ]).map(({ type, icon: Icon, label }) => (
+                        <button
+                            key={type}
+                            onClick={() => setSelectedGarmentType(type)}
+                            disabled={loading}
+                            className={cn(
+                                'flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium transition-colors',
+                                selectedGarmentType === type
+                                    ? 'bg-purple-600 text-white'
+                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300',
+                                'disabled:opacity-50 disabled:cursor-not-allowed'
+                            )}
+                        >
+                            <Icon className="h-4 w-4" />
+                            <span>{label}</span>
+                        </button>
+                    ))}
+                </div>
             </div>
 
             {/* Loading State */}
@@ -143,7 +175,7 @@ export default function ModelSelection({
                     {filteredModels.map((model) => (
                         <div
                             key={model.id}
-                            onClick={() => onSelect(model)}
+                            onClick={() => onSelect(model, selectedGarmentType)}
                             className={cn(
                                 'relative border-2 rounded-lg p-2 cursor-pointer transition-all hover:shadow-lg',
                                 selectedModel?.id === model.id

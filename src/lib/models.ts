@@ -1,4 +1,4 @@
-import { ModelPhoto, Gender } from './database/types'
+import { ModelPhoto, Gender, GarmentType } from './database/types'
 import { supabase } from './supabase'
 
 // Cache for model photos to avoid repeated database calls
@@ -118,6 +118,33 @@ export async function getModelPhotosByGender(gender: Gender): Promise<ModelPhoto
         console.error('Failed to filter model photos by gender:', error)
         return []
     }
+}
+
+// Function to get model photos by garment types
+export async function getModelPhotosByGarmentTypes(garmentTypes: GarmentType[]): Promise<ModelPhoto[]> {
+    try {
+        const { data, error } = await supabase
+            .from('model_photos')
+            .select('*')
+            .eq('is_active', true)
+            .overlaps('garment_types', garmentTypes)
+            .order('sort_order', { ascending: true })
+
+        if (error) {
+            console.error('Error filtering model photos by garment types:', error)
+            throw error
+        }
+
+        return data || []
+    } catch (error) {
+        console.error('Failed to filter model photos by garment types:', error)
+        return []
+    }
+}
+
+// Function to get model photos by single garment type
+export async function getModelPhotosByGarmentType(garmentType: GarmentType): Promise<ModelPhoto[]> {
+    return await getModelPhotosByGarmentTypes([garmentType])
 }
 
 // Function to clear the model cache (useful for admin operations)

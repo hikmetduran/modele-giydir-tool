@@ -1,9 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 
 // Get environment variables
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgltcxeloicyvaenvanu.supabase.co'
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnbHRjeGVsb2ljeXZhZW52YW51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE3MzQ3MDQsImV4cCI6MjA2NzMxMDcwNH0.-Cq0rARxpB_MCqrhSwSl-g69Ia9RaFhjehU2uiMDyQA'
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnbHRjeGVsb2ljeXZhZW52YW51Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MTczNDcwNCwiZXhwIjoyMDY3MzEwNzA0fQ.OE0qdCVtU5ZK7T27GcD_IccpVDgZF22uz0PRmG0dvmc'
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 // Validate environment variables
 if (!supabaseUrl) {
@@ -12,24 +11,36 @@ if (!supabaseUrl) {
 if (!supabaseAnonKey) {
     throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY is required')
 }
-if (!supabaseServiceKey) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY is required')
-}
 
 // Browser client for client-side operations
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// Server client for server-side operations
-export const supabaseServer = createClient(
-    supabaseUrl,
-    supabaseServiceKey,
-    {
-        auth: {
-            autoRefreshToken: false,
-            persistSession: false
-        }
+// Server client for server-side operations - only create when needed
+export function createServerClient() {
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    
+    if (!supabaseServiceKey) {
+        throw new Error('SUPABASE_SERVICE_ROLE_KEY is required')
     }
-)
+    
+    if (!supabaseUrl) {
+        throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
+    }
+    
+    return createClient(
+        supabaseUrl,
+        supabaseServiceKey,
+        {
+            auth: {
+                autoRefreshToken: false,
+                persistSession: false
+            }
+        }
+    )
+}
+
+// Legacy export for backward compatibility - use createServerClient() instead
+export const supabaseServer = typeof window === 'undefined' ? createServerClient() : null
 
 // Type definitions for our database
 export type Database = {
@@ -44,6 +55,7 @@ export type Database = {
                     image_path: string
                     gender: string
                     body_type: string | null
+                    garment_types: string[]
                     is_active: boolean
                     sort_order: number
                     created_at: string
@@ -56,6 +68,7 @@ export type Database = {
                     image_path: string
                     gender?: string
                     body_type?: string | null
+                    garment_types: string[]
                     is_active?: boolean
                     sort_order?: number
                     created_at?: string
@@ -68,6 +81,7 @@ export type Database = {
                     image_path?: string
                     gender?: string
                     body_type?: string | null
+                    garment_types?: string[]
                     is_active?: boolean
                     sort_order?: number
                     created_at?: string

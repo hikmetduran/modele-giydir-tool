@@ -300,7 +300,17 @@ export default function ResultsGallery({ className }: ResultsGalleryProps) {
                     if (status === 'completed' && result_image_url) {
                         // Refresh the results to show the new regenerated result
                         await loadResults()
+                        // Refresh the results to show the new regenerated result
+                        await loadResults()
+                        // Force wallet refresh and trigger global event for Header update
                         refreshWallet()
+                        window.dispatchEvent(new CustomEvent('walletUpdated'))
+                        
+                        // Add a delayed refresh as backup
+                        setTimeout(() => {
+                            refreshWallet()
+                            window.dispatchEvent(new CustomEvent('walletUpdated'))
+                        }, 2000)
                         return
                     } else if (status === 'failed') {
                         throw new Error('Regeneration processing failed')

@@ -254,8 +254,15 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
                             completedAt: new Date(),
                             resultUrl: result_image_url as string
                         })
-                        // Refresh wallet to ensure balance is up to date
+                        // Refresh wallet and trigger global event for Header update
                         refreshWallet()
+                        window.dispatchEvent(new CustomEvent('walletUpdated'))
+                        
+                        // Add a delayed refresh as backup
+                        setTimeout(() => {
+                            refreshWallet()
+                            window.dispatchEvent(new CustomEvent('walletUpdated'))
+                        }, 2000)
                         return
                     } else if (status === 'failed') {
                         console.error('❌ Processing failed:', error_message)
@@ -519,7 +526,15 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
                             completedAt: new Date(),
                             resultUrl: result_image_url as string
                         })
+                        // Refresh wallet and trigger global event for Header update
                         refreshWallet()
+                        window.dispatchEvent(new CustomEvent('walletUpdated'))
+                        
+                        // Add a delayed refresh as backup
+                        setTimeout(() => {
+                            refreshWallet()
+                            window.dispatchEvent(new CustomEvent('walletUpdated'))
+                        }, 2000)
                         return
                     } else if (status === 'failed') {
                         console.error('❌ Regeneration failed:', error_message)

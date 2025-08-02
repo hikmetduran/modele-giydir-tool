@@ -18,7 +18,16 @@ const navigation = [
 export default function Header() {
     const pathname = usePathname()
     const { user, loading, signOut } = useAuth()
-    const { wallet, loading: walletLoading } = useWallet()
+    const walletHookResult = useWallet()
+    const { wallet, loading: walletLoading } = walletHookResult
+    const [displayCredits, setDisplayCredits] = useState<number>(0)
+    
+    // Update display credits when wallet changes
+    useEffect(() => {
+        if (wallet?.credits !== undefined) {
+            setDisplayCredits(wallet.credits)
+        }
+    }, [wallet?.credits])
     const [authModalOpen, setAuthModalOpen] = useState(false)
     const [userMenuOpen, setUserMenuOpen] = useState(false)
     const [userProfile, setUserProfile] = useState<{ full_name?: string | null } | null>(null)
@@ -64,6 +73,7 @@ export default function Header() {
         }
     }, [user, loadProfile])
 
+
     // Listen for profile updates
     useEffect(() => {
         const handleProfileUpdate = () => {
@@ -89,6 +99,18 @@ export default function Header() {
             document.removeEventListener('mousedown', handleClickOutside)
         }
     }, [])
+
+    // Listen for global wallet update events
+    useEffect(() => {
+        const handleWalletUpdate = () => {
+            walletHookResult.refreshWallet()
+        }
+
+        window.addEventListener('walletUpdated', handleWalletUpdate as EventListener)
+        return () => {
+            window.removeEventListener('walletUpdated', handleWalletUpdate as EventListener)
+        }
+    }, [walletHookResult])
 
     return (
         <header className="border-b bg-white">
@@ -140,7 +162,7 @@ export default function Header() {
                                     <div className="flex items-center space-x-2 px-2">
                                         <Coins className="h-4 w-4 text-yellow-500" />
                                         <span className="text-sm font-semibold text-gray-600">
-                                            {walletLoading ? '...' : `${wallet?.credits ?? 0} credits`}
+                                            {walletLoading ? '...' : `${displayCredits} credits`}
                                         </span>
                                     </div>
                                     <div className="h-8 w-8 rounded-full bg-purple-600 flex items-center justify-center text-white text-sm font-bold">

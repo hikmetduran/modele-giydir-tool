@@ -47,9 +47,9 @@ export function useWallet(): UseWalletReturn {
                 // Don't throw here, wallet is more important than transaction history
             }
 
-            setWallet(walletData)
+            // Create a new object reference to ensure React detects the change
+            setWallet(walletData ? { ...walletData } : null)
             setTransactions(transactionData || [])
-            console.log('💰 Wallet loaded successfully:', walletData?.credits)
         } catch (err) {
             console.error('Error loading wallet:', err)
             setError(err instanceof Error ? err.message : 'Failed to load wallet')
@@ -68,7 +68,6 @@ export function useWallet(): UseWalletReturn {
     }, [user])
 
     const refreshWallet = useCallback(async () => {
-        console.log('🔄 Refreshing wallet balance...')
         await loadWallet()
     }, [loadWallet])
 
@@ -78,9 +77,9 @@ export function useWallet(): UseWalletReturn {
             clearTimeout(refreshTimeoutRef.current)
         }
         refreshTimeoutRef.current = setTimeout(() => {
-            refreshWallet()
+            loadWallet()
         }, 1000) // Wait 1 second before refreshing
-    }, [refreshWallet])
+    }, [loadWallet])
 
     // Load wallet on mount and when user changes
     useEffect(() => {
@@ -102,9 +101,8 @@ export function useWallet(): UseWalletReturn {
                     filter: `user_id=eq.${user.id}`
                 },
                 (payload) => {
-                    console.log('Wallet updated:', payload)
                     if (payload.eventType === 'UPDATE' && payload.new) {
-                        setWallet(payload.new as Wallet)
+                        setWallet({ ...(payload.new as Wallet) })
                     }
                     // Also trigger a debounced refresh to ensure consistency
                     debouncedRefresh()
@@ -123,7 +121,6 @@ export function useWallet(): UseWalletReturn {
                     filter: `user_id=eq.${user.id}`
                 },
                 (payload) => {
-                    console.log('New transaction:', payload)
                     if (payload.new) {
                         setTransactions(prev => [payload.new as CreditTransaction, ...prev])
                     }

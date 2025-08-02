@@ -8,7 +8,7 @@ import { join } from 'path'
 config({ path: join(process.cwd(), '.env.local') })
 
 import { fal } from '@fal-ai/client'
-import { supabaseServer } from '../lib/supabase'
+import { createServerClient } from '../lib/supabase'
 import { readFileSync } from 'fs'
 
 // Configure Fal AI client
@@ -63,10 +63,12 @@ class ModelPhotoGenerator {
     private readonly BUCKET_NAME = 'model-photos'
     private readonly IMAGE_SIZE = 'portrait_4_3' as const // Portrait format suitable for fashion models
     private readonly overwrite: boolean
+    private readonly supabase: ReturnType<typeof createServerClient>
 
     constructor(overwrite: boolean = false) {
         this.overwrite = overwrite
         this.validateEnvironment()
+        this.supabase = createServerClient()
     }
 
     private validateEnvironment() {
@@ -91,7 +93,7 @@ class ModelPhotoGenerator {
 
     private async checkExistingModel(name: string, description: string): Promise<boolean> {
         try {
-            const { data, error } = await supabaseServer
+            const { data, error } = await this.supabase
                 .from('model_photos')
                 .select('id')
                 .eq('name', name)
@@ -186,7 +188,7 @@ class ModelPhotoGenerator {
 
             console.log(`📤 Uploading ${fileName} to Supabase storage...`)
 
-            const { error } = await supabaseServer.storage
+            const { error } = await this.supabase.storage
                 .from(this.BUCKET_NAME)
                 .upload(filePath, imageBlob, {
                     contentType: 'image/jpeg',
@@ -199,7 +201,7 @@ class ModelPhotoGenerator {
             }
 
             // Get public URL
-            const { data: publicUrlData } = supabaseServer.storage
+            const { data: publicUrlData } = this.supabase.storage
                 .from(this.BUCKET_NAME)
                 .getPublicUrl(filePath)
 
@@ -221,7 +223,7 @@ class ModelPhotoGenerator {
 
             // If overwriting, delete existing records first
             if (this.overwrite) {
-                const { error: deleteError } = await supabaseServer
+                const { error: deleteError } = await this.supabase
                     .from('model_photos')
                     .delete()
                     .eq('name', model.name)
@@ -233,7 +235,7 @@ class ModelPhotoGenerator {
                 }
             }
 
-            const { error } = await supabaseServer
+            const { error } = await this.supabase
                 .from('model_photos')
                 .insert({
                     name: model.name,

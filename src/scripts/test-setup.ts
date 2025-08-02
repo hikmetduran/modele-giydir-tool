@@ -7,7 +7,7 @@ import { join } from 'path'
 // Load .env.local file
 config({ path: join(process.cwd(), '.env.local') })
 
-import { supabaseServer } from '../lib/supabase'
+import { createServerClient } from '../lib/supabase'
 import { readFileSync, existsSync } from 'fs'
 
 // Colors for console output
@@ -95,8 +95,10 @@ async function testSupabaseConnection() {
     console.log(colorize('🗄️  Testing Supabase Connection...', 'yellow'))
 
     try {
+        const supabase = createServerClient()
+        
         // Test database connection
-        const { error } = await supabaseServer
+        const { error } = await supabase
             .from('model_photos')
             .select('id')
             .limit(1)
@@ -109,7 +111,7 @@ async function testSupabaseConnection() {
         console.log('  ✅ Database connection successful')
 
         // Test storage bucket
-        const { error: storageError } = await supabaseServer.storage
+        const { error: storageError } = await supabase.storage
             .from('model-photos')
             .list('', { limit: 1 })
 

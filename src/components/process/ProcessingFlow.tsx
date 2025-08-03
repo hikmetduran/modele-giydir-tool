@@ -9,12 +9,14 @@ import { GarmentType } from '@/lib/database/types/model_photos'
 import { generateId } from '@/lib/utils'
 import { saveAppState, getAppState } from '@/lib/storage'
 import { useAuth } from '@/components/auth/AuthProvider'
-import { processTryOnWithEdgeFunction } from '@/lib/edge-functions'
+import { processTryOnWithEdgeFunction, processVideoGenerationWithEdgeFunction, getVideoGenerationStatus } from '@/lib/edge-functions'
 import { createTryOnResult, getTryOnResultStatus } from '@/lib/supabase-storage'
 import { useWallet } from '@/lib/hooks/useWallet'
 import FileUpload from '@/components/upload/FileUpload'
 import ModelSelection from '@/components/model/ModelSelection'
 import RegenerateButton from '@/components/ui/RegenerateButton'
+import GenerateVideoButton from '@/components/ui/GenerateVideoButton'
+import VideoThumbnail from '@/components/ui/VideoThumbnail'
 
 interface ProcessingFlowProps {
     className?: string
@@ -31,6 +33,8 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
     })
     const [selectedGarmentType, setSelectedGarmentType] = useState<GarmentType>('tops')
     const [regeneratingJobs, setRegeneratingJobs] = useState<Set<string>>(new Set())
+    const [generatingVideos, setGeneratingVideos] = useState<Set<string>>(new Set())
+    const [jobVideoData, setJobVideoData] = useState<Map<string, { videoUrl?: string; videoStatus?: string }>>(new Map())
 
     // Removed unused isLoading state
 
@@ -163,7 +167,8 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
 
             updateJob({
                 progress: 10,
-                status: 'processing'
+                status: 'processing',
+                dbId: jobId // Store the database ID
             })
 
             // Call edge function to process the try-on request
@@ -453,7 +458,8 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
 
             updateJob({
                 progress: 10,
-                status: 'processing'
+                status: 'processing',
+                dbId: dbJobId // Store the database ID for regeneration
             })
 
             // Call edge function to process the regeneration
@@ -571,6 +577,129 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
             error: 'Regeneration timed out'
         })
         refreshWallet()
+    }
+
+    // Video generation functions
+    const handleGenerateVideo = async (jobId: string) => {
+        if (!user || !wallet || wallet.credits < 50) {
+            alert('Insufficient credits. You need 50 credits to generate a video.')
+            return
+        }
+
+        const job = appState.currentJobs?.find(j => j.id === jobId)
+        if (!job || job.status !== 'completed' || !job.resultUrl) {
+            alert('Cannot generate video for this result.')
+            return
+        }
+
+        try {
+            setGeneratingVideos(prev => new Set([...prev, jobId]))
+
+            // Use the stored database ID for video generation
+            if (!job.dbId) {
+                alert('Cannot generate video: Database ID not found for this result.')
+                return
+            }
+            
+            const result = await processVideoGenerationWithEdgeFunction(job.dbId)
+
+            if (result.success) {
+                console.log('✅ Video generation started successfully')
+                // Poll for video completion using database ID
+                await pollForVideoCompletion(job.dbId)
+            } else {
+                console.error('❌ Video generation failed:', result.error)
+                alert(result.error || 'Video generation failed')
+            }
+        } catch (error) {
+            console.error('Video generation failed:', error)
+            alert(error instanceof Error ? error.message : 'Video generation failed')
+        } finally {
+            setGeneratingVideos(prev => {
+                const newSet = new Set(prev)
+                newSet.delete(jobId)
+                return newSet
+            })
+        }
+    }
+
+    // Poll for video generation completion
+    const pollForVideoCompletion = async (tryOnResultId: string) => {
+        if (!user) return
+
+        let attempts = 0
+        const maxAttempts = 240 // 20 minutes max (5 second intervals)
+
+        while (attempts < maxAttempts) {
+            try {
+                const statusResult = await getVideoGenerationStatus(tryOnResultId, user.id)
+
+                if (statusResult.success && statusResult.data) {
+                    const { video_status, video_url, video_error_message } = statusResult.data
+
+                    if (video_status === 'completed' && video_url) {
+                        console.log('✅ Video generation completed successfully')
+                        setJobVideoData(prev => new Map(prev.set(tryOnResultId, {
+                            videoUrl: video_url as string,
+                            videoStatus: 'completed'
+                        })))
+                        // Refresh wallet and trigger global event for Header update
+                        refreshWallet()
+                        window.dispatchEvent(new CustomEvent('walletUpdated'))
+                        return
+                    } else if (video_status === 'failed') {
+                        console.error('❌ Video generation failed:', video_error_message)
+                        setJobVideoData(prev => new Map(prev.set(tryOnResultId, {
+                            videoStatus: 'failed'
+                        })))
+                        alert(video_error_message as string || 'Video generation failed')
+                        return
+                    } else if (video_status === 'processing') {
+                        setJobVideoData(prev => new Map(prev.set(tryOnResultId, {
+                            videoStatus: 'processing'
+                        })))
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Error polling for video completion:', error)
+            }
+
+            attempts++
+            await new Promise(resolve => setTimeout(resolve, 5000)) // Wait 5 seconds
+        }
+
+        // Timeout
+        console.error('❌ Video generation timed out')
+        setJobVideoData(prev => new Map(prev.set(tryOnResultId, {
+            videoStatus: 'failed'
+        })))
+        alert('Video generation timed out')
+    }
+
+    const downloadVideo = async (url: string, filename: string) => {
+        try {
+            // For external URLs, we need to fetch and create a blob
+            const response = await fetch(url)
+            const blob = await response.blob()
+
+            // Create object URL from blob
+            const objectUrl = URL.createObjectURL(blob)
+
+            // Create download link
+            const link = document.createElement('a')
+            link.href = objectUrl
+            link.download = filename
+            document.body.appendChild(link)
+            link.click()
+
+            // Cleanup
+            document.body.removeChild(link)
+            URL.revokeObjectURL(objectUrl)
+        } catch (error) {
+            console.error('Video download failed:', error)
+            // Fallback: open in new tab
+            window.open(url, '_blank')
+        }
     }
 
     // Calculate overall progress for multiple jobs
@@ -734,70 +863,129 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
 
                         {appState.currentJobs && (
                             <div className="flex flex-col items-center space-y-8">
-                                {appState.currentJobs.filter(job => job.status === 'completed').map((job) => (
-                                    <div key={job.id} className="flex items-center justify-center space-x-4 md:space-x-8 w-full max-w-3xl">
-                                        {/* Original Image */}
-                                        <div className="w-1/3">
-                                            <div
-                                                className="relative aspect-[3/4] bg-gray-200 rounded-xl overflow-hidden cursor-pointer group shadow-md hover:shadow-xl transition-shadow"
-                                                onClick={() => downloadImage(job.productImage.preview, `original-${job.id}.jpg`)}
-                                            >
-                                                <Image
-                                                    src={job.productImage.preview}
-                                                    alt="Original product"
-                                                    fill
-                                                    className="object-cover"
-                                                />
-                                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/60">
-                                                    <Download className="h-8 w-8 text-white" />
-                                                </div>
-                                            </div>
-                                        </div>
+                                {appState.currentJobs.filter(job => job.status === 'completed').map((job) => {
+                                    const videoData = jobVideoData.get(job.dbId || job.id)
+                                    const hasVideo = videoData?.videoUrl
+                                    const isGeneratingVideo = generatingVideos.has(job.id)
+                                    const videoStatus = videoData?.videoStatus
 
-                                        {/* Arrow Icon */}
-                                        <div className="flex-shrink-0">
-                                            <ArrowRight className="h-8 w-8 text-gray-400" />
-                                        </div>
-
-                                        {/* Try-On Result Image */}
-                                        <div className="w-1/3">
-                                            <div
-                                                className="relative aspect-[3/4] bg-gray-200 rounded-xl overflow-hidden cursor-pointer group shadow-md hover:shadow-xl transition-shadow"
-                                                onClick={() => job.resultUrl && downloadImage(job.resultUrl, `try-on-result-${job.id}.png`)}
-                                            >
-                                                {job.resultUrl ? (
-                                                    <>
+                                    return (
+                                        <div key={job.id} className="w-full max-w-5xl">
+                                            {/* Main result display */}
+                                            <div className="flex items-center justify-center space-x-4 md:space-x-8 mb-6">
+                                                {/* Original Image */}
+                                                <div className="w-1/4">
+                                                    <div
+                                                        className="relative aspect-[3/4] bg-gray-200 rounded-xl overflow-hidden cursor-pointer group shadow-md hover:shadow-xl transition-shadow"
+                                                        onClick={() => downloadImage(job.productImage.preview, `original-${job.id}.jpg`)}
+                                                    >
                                                         <Image
-                                                            src={job.resultUrl}
-                                                            alt="Try-on result"
+                                                            src={job.productImage.preview}
+                                                            alt="Original product"
                                                             fill
                                                             className="object-cover"
                                                         />
                                                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/60">
                                                             <Download className="h-8 w-8 text-white" />
                                                         </div>
-                                                    </>
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center">
-                                                        <Users className="h-12 w-12 text-gray-400" />
                                                     </div>
+                                                </div>
+
+                                                {/* Arrow Icon */}
+                                                <div className="flex-shrink-0">
+                                                    <ArrowRight className="h-8 w-8 text-gray-400" />
+                                                </div>
+
+                                                {/* Try-On Result Image */}
+                                                <div className="w-1/4">
+                                                    <div
+                                                        className="relative aspect-[3/4] bg-gray-200 rounded-xl overflow-hidden cursor-pointer group shadow-md hover:shadow-xl transition-shadow"
+                                                        onClick={() => job.resultUrl && downloadImage(job.resultUrl, `try-on-result-${job.id}.png`)}
+                                                    >
+                                                        {job.resultUrl ? (
+                                                            <>
+                                                                <Image
+                                                                    src={job.resultUrl}
+                                                                    alt="Try-on result"
+                                                                    fill
+                                                                    className="object-cover"
+                                                                />
+                                                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/60">
+                                                                    <Download className="h-8 w-8 text-white" />
+                                                                </div>
+                                                            </>
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center">
+                                                                <Users className="h-12 w-12 text-gray-400" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* Video Section */}
+                                                {hasVideo && (
+                                                    <>
+                                                        <div className="flex-shrink-0">
+                                                            <ArrowRight className="h-8 w-8 text-gray-400" />
+                                                        </div>
+                                                        <div className="w-1/4">
+                                                            <VideoThumbnail
+                                                                videoUrl={videoData.videoUrl!}
+                                                                className="aspect-[3/4] shadow-md hover:shadow-xl transition-shadow"
+                                                                onDownload={() => downloadVideo(videoData.videoUrl!, `try-on-video-${job.id}.mp4`)}
+                                                            />
+                                                        </div>
+                                                    </>
                                                 )}
                                             </div>
-                                            
-                                            {/* Regenerate Button for completed results */}
-                                            {job.status === 'completed' && job.resultUrl && (
-                                                <div className="mt-3 flex justify-center">
-                                                    <RegenerateButton
-                                                        onRegenerate={() => handleRegenerateResult(job.id)}
-                                                        disabled={!wallet || wallet.credits < 5}
-                                                        loading={regeneratingJobs.has(job.id)}
+
+                                            {/* Action buttons */}
+                                            <div className="flex justify-center space-x-4">
+                                                {/* Regenerate Button */}
+                                                <RegenerateButton
+                                                    onRegenerate={() => handleRegenerateResult(job.id)}
+                                                    disabled={!wallet || wallet.credits < 5}
+                                                    loading={regeneratingJobs.has(job.id)}
+                                                    size="sm"
+                                                />
+
+                                                {/* Generate Video Button - only show if no video exists */}
+                                                {!hasVideo && (
+                                                    <GenerateVideoButton
+                                                        onGenerateVideo={() => handleGenerateVideo(job.id)}
+                                                        disabled={!wallet || wallet.credits < 50}
+                                                        loading={isGeneratingVideo || videoStatus === 'processing'}
+                                                        hasVideo={false}
                                                         size="sm"
                                                     />
+                                                )}
+                                            </div>
+
+                                            {/* Video generation status */}
+                                            {videoStatus === 'processing' && (
+                                                <div className="mt-4 text-center">
+                                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                                        <div className="text-blue-800 text-sm font-medium">🎬 Generating Video...</div>
+                                                        <div className="text-blue-600 text-xs mt-1">
+                                                            This may take a few minutes. You can continue using the app.
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {videoStatus === 'failed' && (
+                                                <div className="mt-4 text-center">
+                                                    <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                                                        <div className="text-red-800 text-sm font-medium">❌ Video Generation Failed</div>
+                                                        <div className="text-red-600 text-xs mt-1">
+                                                            Please try again or contact support if the issue persists.
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
-                                    </div>
-                                ))}
+                                    )
+                                })}
                             </div>
                         )}
                     </div>
@@ -850,11 +1038,14 @@ export default function ProcessingFlow({ className }: ProcessingFlowProps) {
                 {appState.currentStep === 'results' && appState.currentJobs && (
                     <div className="text-sm text-gray-600 text-center">
                         <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-                            <div className="font-medium text-purple-800">💡 Pro Tip</div>
+                            <div className="font-medium text-purple-800">💡 Pro Tips</div>
                             <div className="text-xs text-purple-700 mt-1">
-                                Not happy with a result? Use the regenerate button for only 5 credits instead of 10!
+                                • Regenerate results for only 5 credits instead of 10!
                             </div>
-                            <div className="text-xs text-gray-500 mt-1">
+                            <div className="text-xs text-purple-700">
+                                • Generate 5-second videos for 50 credits each
+                            </div>
+                            <div className="text-xs text-gray-500 mt-2">
                                 You have {wallet?.credits || 0} credits remaining
                             </div>
                         </div>

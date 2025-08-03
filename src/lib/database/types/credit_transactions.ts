@@ -1,4 +1,4 @@
-import { TransactionType } from './common';
+import { TransactionType, OperationType } from './common';
 
 /**
  * Credit Transactions table - History of credit changes
@@ -7,6 +7,7 @@ export interface CreditTransaction {
     id: string;
     user_id: string; // Using user_id as separate field for ownership
     type: TransactionType;
+    transaction_type?: OperationType; // Specific operation type (try_on, regeneration, video_generation)
     amount: number;
     credits_before: number;
     credits_after: number;
@@ -22,6 +23,7 @@ export interface CreditTransaction {
 export interface CreditTransactionInput {
     user_id: string;
     type: TransactionType;
+    transaction_type?: OperationType;
     amount: number;
     credits_before: number;
     credits_after: number;

@@ -19,6 +19,15 @@ export interface TryOnResult {
     ai_provider?: string;
     ai_model?: string;
     processing_time_seconds?: number;
+    // Video generation fields
+    video_url?: string;
+    video_path?: string;
+    video_status?: ProcessingStatus;
+    video_credits_used?: number;
+    video_error_message?: string;
+    video_processing_started_at?: string;
+    video_processing_completed_at?: string;
+    video_processing_time_seconds?: number;
     created_at: string;
     updated_at: string;
 }
@@ -45,6 +54,15 @@ export interface TryOnResultUpdate {
     error_message?: string;
     processing_started_at?: string;
     processing_completed_at?: string;
+    // Video update fields
+    video_url?: string;
+    video_path?: string;
+    video_status?: ProcessingStatus;
+    video_credits_used?: number;
+    video_error_message?: string;
+    video_processing_started_at?: string;
+    video_processing_completed_at?: string;
+    video_processing_time_seconds?: number;
 }
 
 // SQL Schema for try_on_results table

@@ -1,14 +1,16 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Search, Download, Heart, Calendar, Clock, User, Check } from 'lucide-react'
+import { Search, Download, Calendar, Clock, User, Check } from 'lucide-react'
 import Image from 'next/image'
 import { cn, formatDate, formatTime, groupByDate, sortDateGroups, downloadImage, downloadMultipleImages } from '@/lib/utils'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { getUserTryOnResultsGroupedByDate, processRegenerateResult, getTryOnResultStatus } from '@/lib/supabase-storage'
-import { processTryOnWithEdgeFunction } from '@/lib/edge-functions'
+import { processTryOnWithEdgeFunction, processVideoGenerationWithEdgeFunction, getVideoGenerationStatus } from '@/lib/edge-functions'
 import { useWallet } from '@/lib/hooks/useWallet'
 import RegenerateButton from '@/components/ui/RegenerateButton'
+import GenerateVideoButton from '@/components/ui/GenerateVideoButton'
+import VideoThumbnail from '@/components/ui/VideoThumbnail'
 
 interface TryOnResult {
     id: string
@@ -20,6 +22,12 @@ interface TryOnResult {
     ai_model: string
     processing_time_seconds: number
     metadata: Record<string, unknown>
+    // Video fields
+    video_url?: string
+    video_status?: string
+    video_error_message?: string
+    video_processing_started_at?: string
+    video_processing_completed_at?: string
     product_images: {
         id: string
         original_filename: string
@@ -35,6 +43,26 @@ interface TryOnResult {
         gender: string
         body_type: string
     }
+}
+
+// Type for the raw database response (flexible to handle both array and object formats)
+type DatabaseResponse = Record<string, unknown> & {
+    id: string
+    created_at: string
+    updated_at: string
+    status: string
+    result_image_url: string
+    ai_provider: string
+    ai_model: string
+    processing_time_seconds: number
+    metadata: Record<string, unknown>
+    video_url?: string
+    video_status?: string
+    video_error_message?: string
+    video_processing_started_at?: string
+    video_processing_completed_at?: string
+    product_images: unknown
+    model_photos: unknown
 }
 
 interface ResultsGalleryProps {
@@ -55,30 +83,10 @@ export default function ResultsGallery({ className }: ResultsGalleryProps) {
     const [sortBy] = useState<SortBy>('date')
     const [sortOrder] = useState<SortOrder>('desc')
     const [filterGender, setFilterGender] = useState<string>('all')
-    const [favorites, setFavorites] = useState<Set<string>>(new Set())
     const [showBulkActions, setShowBulkActions] = useState(false)
     const [regeneratingResults, setRegeneratingResults] = useState<Set<string>>(new Set())
+    const [generatingVideos, setGeneratingVideos] = useState<Set<string>>(new Set())
 
-    // Load favorites from localStorage
-    const loadFavorites = () => {
-        try {
-            const stored = localStorage.getItem('tryon-favorites')
-            if (stored) {
-                setFavorites(new Set(JSON.parse(stored)))
-            }
-        } catch (error) {
-            console.error('Failed to load favorites:', error)
-        }
-    }
-
-    // Save favorites to localStorage
-    const saveFavorites = (newFavorites: Set<string>) => {
-        try {
-            localStorage.setItem('tryon-favorites', JSON.stringify([...newFavorites]))
-        } catch (error) {
-            console.error('Failed to save favorites:', error)
-        }
-    }
 
     const loadResults = useCallback(async () => {
         if (!user) return
@@ -94,8 +102,37 @@ export default function ResultsGallery({ className }: ResultsGalleryProps) {
                     console.log('🔍 Debug: First result:', response.data[0])
                     console.log('🔍 Debug: Product images:', response.data[0].product_images)
                     console.log('🔍 Debug: Model photos:', response.data[0].model_photos)
+                    console.log('🔍 Debug: Video fields:', {
+                        video_url: response.data[0].video_url,
+                        video_status: response.data[0].video_status,
+                        video_error_message: response.data[0].video_error_message
+                    })
                 }
-                setResults(response.data as TryOnResult[])
+                // Check for results with videos
+                const resultsWithVideos = response.data.filter((result: DatabaseResponse) => result.video_url)
+                console.log('🎬 Debug: Results with videos:', resultsWithVideos.length, 'out of', response.data.length)
+                if (resultsWithVideos.length > 0) {
+                    console.log('🎬 Debug: First video result:', {
+                        id: resultsWithVideos[0].id,
+                        video_url: resultsWithVideos[0].video_url,
+                        video_status: resultsWithVideos[0].video_status
+                    })
+                }
+                // Transform database results to component format
+                const transformedResults: TryOnResult[] = response.data
+                    .filter((result: DatabaseResponse) =>
+                        result.product_images && result.model_photos
+                    )
+                    .map((result: DatabaseResponse) => ({
+                        ...result,
+                        // Handle both array and object formats
+                        product_images: Array.isArray(result.product_images) ? result.product_images[0] : result.product_images,
+                        model_photos: Array.isArray(result.model_photos) ? result.model_photos[0] : result.model_photos
+                    }))
+                    .filter((result: DatabaseResponse) =>
+                        result.product_images && result.model_photos
+                    ) as TryOnResult[]
+                setResults(transformedResults)
             } else {
                 setError(response.error || 'Failed to load results')
             }
@@ -109,7 +146,6 @@ export default function ResultsGallery({ className }: ResultsGalleryProps) {
     // Load data on mount
     useEffect(() => {
         loadResults()
-        loadFavorites()
     }, [user, loadResults])
 
     // Filter and sort results
@@ -163,7 +199,7 @@ export default function ResultsGallery({ className }: ResultsGalleryProps) {
 
     // Get unique values for filters
     const uniqueGenders = useMemo(() => {
-        return [...new Set(results.map(r => r.model_photos.gender))].filter(Boolean)
+        return [...new Set(results.map(r => r.model_photos?.gender).filter(Boolean))]
     }, [results])
 
     // Handle selection
@@ -188,17 +224,6 @@ export default function ResultsGallery({ className }: ResultsGalleryProps) {
         setShowBulkActions(false)
     }
 
-    // Handle favorites
-    const toggleFavorite = (id: string) => {
-        const newFavorites = new Set(favorites)
-        if (newFavorites.has(id)) {
-            newFavorites.delete(id)
-        } else {
-            newFavorites.add(id)
-        }
-        setFavorites(newFavorites)
-        saveFavorites(newFavorites)
-    }
 
     // Handle bulk actions
     const downloadSelected = async () => {
@@ -223,13 +248,6 @@ export default function ResultsGallery({ className }: ResultsGalleryProps) {
         deselectAll()
     }
 
-    const favoriteSelected = () => {
-        const newFavorites = new Set(favorites)
-        selectedResults.forEach(id => newFavorites.add(id))
-        setFavorites(newFavorites)
-        saveFavorites(newFavorites)
-        deselectAll()
-    }
 
     // Handle regeneration
     const handleRegenerate = async (resultId: string) => {
@@ -326,6 +344,105 @@ export default function ResultsGallery({ className }: ResultsGalleryProps) {
         }
 
         throw new Error('Regeneration timed out')
+    }
+
+    // Video generation functions
+    const handleGenerateVideo = async (resultId: string) => {
+        if (!user || !wallet || wallet.credits < 50) {
+            alert('Insufficient credits. You need 50 credits to generate a video.')
+            return
+        }
+
+        try {
+            setGeneratingVideos(prev => new Set([...prev, resultId]))
+
+            const result = await processVideoGenerationWithEdgeFunction(resultId)
+
+            if (result.success) {
+                console.log('✅ Video generation started successfully')
+                // Poll for video completion
+                await pollForVideoCompletion(resultId)
+            } else {
+                console.error('❌ Video generation failed:', result.error)
+                alert(result.error || 'Video generation failed')
+            }
+        } catch (error) {
+            console.error('Video generation failed:', error)
+            alert(error instanceof Error ? error.message : 'Video generation failed')
+        } finally {
+            setGeneratingVideos(prev => {
+                const newSet = new Set(prev)
+                newSet.delete(resultId)
+                return newSet
+            })
+        }
+    }
+
+    // Poll for video generation completion
+    const pollForVideoCompletion = async (resultId: string) => {
+        if (!user) return
+
+        let attempts = 0
+        const maxAttempts = 240 // 20 minutes max (5 second intervals)
+
+        while (attempts < maxAttempts) {
+            try {
+                const statusResult = await getVideoGenerationStatus(resultId, user.id)
+
+                if (statusResult.success && statusResult.data) {
+                    const { video_status, video_url, video_error_message } = statusResult.data
+
+                    if (video_status === 'completed' && video_url) {
+                        console.log('✅ Video generation completed successfully')
+                        // Refresh the results to show the new video
+                        await loadResults()
+                        // Refresh wallet and trigger global event for Header update
+                        refreshWallet()
+                        window.dispatchEvent(new CustomEvent('walletUpdated'))
+                        return
+                    } else if (video_status === 'failed') {
+                        console.error('❌ Video generation failed:', video_error_message)
+                        alert(video_error_message as string || 'Video generation failed')
+                        return
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Error polling for video completion:', error)
+            }
+
+            attempts++
+            await new Promise(resolve => setTimeout(resolve, 5000)) // Wait 5 seconds
+        }
+
+        // Timeout
+        console.error('❌ Video generation timed out')
+        alert('Video generation timed out')
+    }
+
+    const downloadVideo = async (url: string, filename: string) => {
+        try {
+            // For external URLs, we need to fetch and create a blob
+            const response = await fetch(url)
+            const blob = await response.blob()
+
+            // Create object URL from blob
+            const objectUrl = URL.createObjectURL(blob)
+
+            // Create download link
+            const link = document.createElement('a')
+            link.href = objectUrl
+            link.download = filename
+            document.body.appendChild(link)
+            link.click()
+
+            // Cleanup
+            document.body.removeChild(link)
+            URL.revokeObjectURL(objectUrl)
+        } catch (error) {
+            console.error('Video download failed:', error)
+            // Fallback: open in new tab
+            window.open(url, '_blank')
+        }
     }
 
     if (loading) {
@@ -452,13 +569,6 @@ export default function ResultsGallery({ className }: ResultsGalleryProps) {
                                 <Download className="h-4 w-4" />
                                 <span>Download Originals</span>
                             </button>
-                            <button
-                                onClick={favoriteSelected}
-                                className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                            >
-                                <Heart className="h-4 w-4" />
-                                <span>Favorite</span>
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -495,12 +605,14 @@ export default function ResultsGallery({ className }: ResultsGalleryProps) {
                                         key={result.id}
                                         result={result}
                                         isSelected={selectedResults.has(result.id)}
-                                        isFavorite={favorites.has(result.id)}
                                         onToggleSelection={() => toggleSelection(result.id)}
-                                        onToggleFavorite={() => toggleFavorite(result.id)}
                                         onRegenerate={handleRegenerate}
                                         isRegenerating={regeneratingResults.has(result.id)}
                                         canRegenerate={wallet ? wallet.credits >= 5 : false}
+                                        onGenerateVideo={handleGenerateVideo}
+                                        isGeneratingVideo={generatingVideos.has(result.id)}
+                                        canGenerateVideo={wallet ? wallet.credits >= 50 : false}
+                                        onDownloadVideo={downloadVideo}
                                     />
                                 ))}
                             </div>
@@ -515,23 +627,27 @@ export default function ResultsGallery({ className }: ResultsGalleryProps) {
 interface ResultCardProps {
     result: TryOnResult
     isSelected: boolean
-    isFavorite: boolean
     onToggleSelection: () => void
-    onToggleFavorite: () => void
     onRegenerate: (resultId: string) => Promise<void>
     isRegenerating: boolean
     canRegenerate: boolean
+    onGenerateVideo: (resultId: string) => Promise<void>
+    isGeneratingVideo: boolean
+    canGenerateVideo: boolean
+    onDownloadVideo: (url: string, filename: string) => Promise<void>
 }
 
 function ResultCard({
     result,
     isSelected,
-    isFavorite,
     onToggleSelection,
-    onToggleFavorite,
     onRegenerate,
     isRegenerating,
-    canRegenerate
+    canRegenerate,
+    onGenerateVideo,
+    isGeneratingVideo,
+    canGenerateVideo,
+    onDownloadVideo
 }: ResultCardProps) {
     const downloadResult = () => {
         downloadImage(result.result_image_url, `tryon-${result.product_images.original_filename}-${result.model_photos.name}.png`)
@@ -541,12 +657,15 @@ function ResultCard({
     //     downloadImage(result.product_images.image_url, `original-${result.product_images.original_filename}`)
     // }
 
+    const hasVideo = !!(result.video_url && result.video_status === 'completed')
+    const isVideoProcessing = result.video_status === 'processing'
+
     return (
         <div className={cn(
-            'bg-white rounded-lg border p-4 transition-all duration-200',
+            'bg-white rounded-lg border p-6 transition-all duration-200',
             isSelected ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-gray-300'
         )}>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-6">
                 {/* Selection Checkbox */}
                 <button
                     onClick={onToggleSelection}
@@ -558,28 +677,43 @@ function ResultCard({
                     {isSelected && <Check className="h-3 w-3 text-white" />}
                 </button>
 
-                {/* Images */}
-                <div className="flex items-center space-x-3">
+                {/* Images and Video */}
+                <div className="flex items-center space-x-4">
                     <Image
                         src={result.product_images.image_url}
                         alt="Original"
-                        width={64}
-                        height={64}
-                        className="w-16 h-16 rounded-lg object-cover"
+                        width={80}
+                        height={80}
+                        className="w-20 h-20 rounded-lg object-cover"
                     />
-                    <div className="text-gray-400 text-2xl">→</div>
+                    <div className="text-gray-400 text-3xl">→</div>
                     <Image
                         src={result.result_image_url}
                         alt="Try-on result"
-                        width={64}
-                        height={64}
-                        className="w-16 h-16 rounded-lg object-cover"
+                        width={80}
+                        height={80}
+                        className="w-20 h-20 rounded-lg object-cover"
                     />
+                    
+                    {/* Video thumbnail */}
+                    {hasVideo && (
+                        <>
+                            <div className="text-gray-400 text-3xl">→</div>
+                            <div className="w-20 h-20">
+                                <VideoThumbnail
+                                    videoUrl={result.video_url!}
+                                    className="w-20 h-20 rounded-lg"
+                                    onDownload={() => onDownloadVideo(result.video_url!, `try-on-video-${result.id}.mp4`)}
+                                    autoPlay={true}
+                                />
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 {/* Details */}
                 <div className="flex-1">
-                    <div className="flex flex-col space-y-1 text-sm text-gray-500">
+                    <div className="flex flex-col space-y-2 text-sm text-gray-500">
                         <div className="flex items-center space-x-1">
                             <User className="h-4 w-4" />
                             <span>{result.model_photos.name}</span>
@@ -588,6 +722,13 @@ function ResultCard({
                             <Clock className="h-4 w-4" />
                             <span>{formatTime(result.created_at)}</span>
                         </div>
+                        {/* Video status indicator */}
+                        {isVideoProcessing && (
+                            <div className="flex items-center space-x-1 text-blue-600">
+                                <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+                                <span className="text-xs">Generating video...</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -600,18 +741,20 @@ function ResultCard({
                         size="sm"
                         className="text-xs"
                     />
-                    <button
-                        onClick={onToggleFavorite}
-                        className={cn(
-                            'p-2 rounded-lg transition-colors',
-                            isFavorite ? 'text-red-500 hover:text-red-600' : 'text-gray-400 hover:text-gray-600'
-                        )}
-                    >
-                        <Heart className={cn('h-4 w-4', isFavorite && 'fill-current')} />
-                    </button>
+                    {!hasVideo && (
+                        <GenerateVideoButton
+                            onGenerateVideo={() => onGenerateVideo(result.id)}
+                            disabled={!canGenerateVideo}
+                            loading={isGeneratingVideo || isVideoProcessing}
+                            hasVideo={hasVideo}
+                            size="sm"
+                            className="text-xs"
+                        />
+                    )}
                     <button
                         onClick={downloadResult}
                         className="p-2 text-gray-400 hover:text-gray-600 rounded-lg transition-colors"
+                        title="Download image"
                     >
                         <Download className="h-4 w-4" />
                     </button>

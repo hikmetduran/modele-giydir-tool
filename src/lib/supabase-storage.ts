@@ -835,6 +835,11 @@ export async function getUserTryOnResultsForGallery(userId: string, limit?: numb
                 ai_model,
                 processing_time_seconds,
                 metadata,
+                video_url,
+                video_status,
+                video_error_message,
+                video_processing_started_at,
+                video_processing_completed_at,
                 product_images!inner(
                     id,
                     original_filename,
@@ -929,6 +934,11 @@ export async function searchUserTryOnResults(userId: string, searchTerm: string,
                 ai_model,
                 processing_time_seconds,
                 metadata,
+                video_url,
+                video_status,
+                video_error_message,
+                video_processing_started_at,
+                video_processing_completed_at,
                 product_images!inner(
                     id,
                     original_filename,
@@ -985,6 +995,11 @@ export async function getUserTryOnResultsGroupedByDate(userId: string) {
                 ai_model,
                 processing_time_seconds,
                 metadata,
+                video_url,
+                video_status,
+                video_error_message,
+                video_processing_started_at,
+                video_processing_completed_at,
                 product_images!inner(
                     id,
                     original_filename,
@@ -1219,6 +1234,249 @@ export async function processRegenerateResult(
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error'
+        }
+    }
+}
+
+// Video Generation Functions
+
+/**
+ * Create a video generation request for an existing try-on result
+ */
+export async function createVideoGenerationRequest(
+    tryOnResultId: string,
+    userId: string
+): Promise<{ success: boolean; data?: { id: string }; error?: string }> {
+    try {
+        console.log('🎬 Creating video generation request for result:', tryOnResultId, 'user:', userId)
+
+        // First, verify the try-on result exists and belongs to the user
+        const { data: tryOnResult, error: fetchError } = await supabase
+            .from('try_on_results')
+            .select('id, result_image_url, status')
+            .eq('id', tryOnResultId)
+            .eq('user_id', userId)
+            .eq('status', 'completed')
+            .not('result_image_url', 'is', null)
+            .single()
+
+        if (fetchError || !tryOnResult) {
+            console.error('❌ Try-on result not found or invalid:', fetchError)
+            return {
+                success: false,
+                error: 'Try-on result not found or not ready for video generation'
+            }
+        }
+
+        // Update the try-on result to start video generation
+        const { data, error } = await supabase
+            .from('try_on_results')
+            .update({
+                video_status: 'pending',
+                video_credits_used: 50,
+                video_processing_started_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', tryOnResultId)
+            .eq('user_id', userId)
+            .select('id')
+            .single()
+
+        if (error) {
+            console.error('❌ Failed to update try-on result for video generation:', error)
+            return {
+                success: false,
+                error: error.message
+            }
+        }
+
+        console.log('✅ Video generation request created for result:', data.id)
+        return {
+            success: true,
+            data: { id: data.id }
+        }
+    } catch (error) {
+        console.error('❌ Error creating video generation request:', error)
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+        }
+    }
+}
+
+/**
+ * Update video generation status and result
+ */
+export async function updateVideoGenerationResult(
+    tryOnResultId: string,
+    userId: string,
+    updates: {
+        video_status?: 'pending' | 'processing' | 'completed' | 'failed'
+        video_url?: string
+        video_path?: string
+        video_error_message?: string
+        video_processing_completed_at?: string
+        video_processing_time_seconds?: number
+    }
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        console.log('🎬 Updating video generation result:', tryOnResultId, updates)
+
+        const updateData: Record<string, unknown> = {
+            ...updates,
+            updated_at: new Date().toISOString()
+        }
+
+        const { error } = await supabase
+            .from('try_on_results')
+            .update(updateData)
+            .eq('id', tryOnResultId)
+            .eq('user_id', userId)
+
+        if (error) {
+            console.error('❌ Failed to update video generation result:', error)
+            return {
+                success: false,
+                error: error.message
+            }
+        }
+
+        console.log('✅ Video generation result updated successfully')
+        return { success: true }
+    } catch (error) {
+        console.error('❌ Error updating video generation result:', error)
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+        }
+    }
+}
+
+/**
+ * Get video generation status for a try-on result
+ */
+export async function getVideoGenerationStatus(
+    tryOnResultId: string,
+    userId: string
+): Promise<{ success: boolean; data?: Record<string, unknown>; error?: string }> {
+    try {
+        const { data, error } = await supabase
+            .from('try_on_results')
+            .select('video_status, video_url, video_error_message, video_processing_started_at, video_processing_completed_at')
+            .eq('id', tryOnResultId)
+            .eq('user_id', userId)
+            .single()
+
+        if (error) {
+            console.error('❌ Failed to get video generation status:', error)
+            return {
+                success: false,
+                error: error.message
+            }
+        }
+
+        return {
+            success: true,
+            data
+        }
+    } catch (error) {
+        console.error('❌ Error getting video generation status:', error)
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+        }
+    }
+}
+
+/**
+ * Save video file to storage and update database
+ */
+export async function saveVideoResult(
+    tryOnResultId: string,
+    userId: string,
+    videoBlob: Blob,
+    metadata?: Record<string, unknown>
+): Promise<{ success: boolean; data?: { url: string; path: string }; error?: string }> {
+    const operationId = `save-video-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`
+
+    try {
+        console.log(`🎬 [${operationId}] Saving video result for try-on:`, tryOnResultId)
+
+        // Convert blob to file
+        const file = new File([videoBlob], 'try-on-video.mp4', { type: 'video/mp4' })
+
+        // Upload to storage (we'll use try-on-results bucket for now, or create try-on-videos bucket)
+        const uploadResult = await uploadFile('try-on-results', file, userId)
+
+        if (!uploadResult.success || !uploadResult.data) {
+            throw new Error(uploadResult.error || 'Video upload failed')
+        }
+
+        console.log(`📁 [${operationId}] Video storage upload successful:`, uploadResult.data.url)
+
+        // Update the try-on result with video information
+        const updateResult = await updateVideoGenerationResult(tryOnResultId, userId, {
+            video_status: 'completed',
+            video_url: uploadResult.data.url,
+            video_path: uploadResult.data.path,
+            video_processing_completed_at: new Date().toISOString(),
+            video_processing_time_seconds: metadata?.processing_time_seconds as number || 0
+        })
+
+        if (!updateResult.success) {
+            // Clean up uploaded file if database update fails
+            await deleteFile('try-on-results', uploadResult.data.path)
+            throw new Error(updateResult.error || 'Failed to update database with video information')
+        }
+
+        console.log(`✅ [${operationId}] Video result saved successfully`)
+
+        return {
+            success: true,
+            data: {
+                url: uploadResult.data.url,
+                path: uploadResult.data.path
+            }
+        }
+    } catch (error) {
+        console.error(`❌ [${operationId}] Save video result error:`, error)
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Save video failed'
+        }
+    }
+}
+
+/**
+ * Download video from URL and save to storage
+ */
+export async function downloadAndSaveVideo(
+    tryOnResultId: string,
+    userId: string,
+    videoUrl: string,
+    metadata?: Record<string, unknown>
+): Promise<{ success: boolean; data?: { url: string; path: string }; error?: string }> {
+    const operationId = `download-video-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`
+
+    try {
+        console.log(`🎬 [${operationId}] Downloading and saving video from:`, videoUrl)
+
+        // Download video from external URL
+        const response = await fetch(videoUrl)
+        if (!response.ok) {
+            throw new Error(`Failed to download video: ${response.status} ${response.statusText}`)
+        }
+
+        const videoBlob = await response.blob()
+        console.log(`📥 [${operationId}] Video downloaded, size:`, videoBlob.size, 'bytes')
+
+        // Save the video
+        return await saveVideoResult(tryOnResultId, userId, videoBlob, metadata)
+    } catch (error) {
+        console.error(`❌ [${operationId}] Download and save video error:`, error)
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Download and save video failed'
         }
     }
 }

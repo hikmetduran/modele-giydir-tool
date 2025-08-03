@@ -51,6 +51,7 @@ export interface ProcessingJob {
     completedAt?: Date
     resultUrl?: string
     error?: string
+    dbId?: string // Database try-on result ID for video generation
 }
 
 export interface AppState {

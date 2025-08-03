@@ -11,8 +11,11 @@ export type ProcessingStatus = 'pending' | 'processing' | 'completed' | 'failed'
 // Transaction types for credit system
 export type TransactionType = 'deduct' | 'refund' | 'purchase' | 'bonus';
 
+// Specific transaction types for different operations
+export type OperationType = 'try_on' | 'regeneration' | 'video_generation';
+
 // File storage types
-export type StorageBucket = 'product-images' | 'model-photos' | 'try-on-results';
+export type StorageBucket = 'product-images' | 'model-photos' | 'try-on-results' | 'try-on-videos';
 
 // Common timestamps
 export interface TimestampFields {

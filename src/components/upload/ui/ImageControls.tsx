@@ -1,15 +1,11 @@
 'use client'
 
-import { Search, List, Grid, Images, Plus, Loader2 } from 'lucide-react'
+import { Search, Images, Plus, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-
-type ViewMode = 'grid' | 'list'
 
 interface ImageControlsProps {
     searchTerm: string
     onSearchTermChange: (term: string) => void
-    viewMode: ViewMode
-    onViewModeChange: (mode: ViewMode) => void
     filteredCount: number
     totalCount: number
     // Upload functionality props
@@ -23,8 +19,6 @@ interface ImageControlsProps {
 export function ImageControls({
     searchTerm,
     onSearchTermChange,
-    viewMode,
-    onViewModeChange,
     filteredCount,
     totalCount,
     onFileSelect,
@@ -106,36 +100,6 @@ export function ImageControls({
                         </button>
                     )}
 
-                    {/* View Mode Toggle */}
-                    <div className="flex items-center space-x-2">
-                        <span className="text-xs text-gray-500 hidden lg:block">View:</span>
-                        <div className="flex bg-gray-100 rounded-lg p-1">
-                            <button
-                                onClick={() => onViewModeChange('grid')}
-                                className={cn(
-                                    'p-2 rounded-md transition-all text-sm',
-                                    viewMode === 'grid'
-                                        ? 'bg-white text-purple-600 shadow-sm'
-                                        : 'text-gray-600 hover:text-gray-900'
-                                )}
-                                title="Grid view"
-                            >
-                                <Grid className="h-4 w-4" />
-                            </button>
-                            <button
-                                onClick={() => onViewModeChange('list')}
-                                className={cn(
-                                    'p-2 rounded-md transition-all text-sm',
-                                    viewMode === 'list'
-                                        ? 'bg-white text-purple-600 shadow-sm'
-                                        : 'text-gray-600 hover:text-gray-900'
-                                )}
-                                title="List view"
-                            >
-                                <List className="h-4 w-4" />
-                            </button>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>

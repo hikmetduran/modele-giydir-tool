@@ -29,7 +29,6 @@ export default function FileUpload({
     className
 }: FileUploadProps) {
     const { user } = useAuth()
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
     const [globalError, setGlobalError] = useState<string | null>(null)
 
     const {
@@ -149,8 +148,6 @@ export default function FileUpload({
             <ImageControls
                 searchTerm={searchTerm}
                 onSearchTermChange={setSearchTerm}
-                viewMode={viewMode}
-                onViewModeChange={setViewMode}
                 filteredCount={filteredStoredImages.length}
                 totalCount={storedImages.length}
                 onFileSelect={(files) => onDrop(files, [])}
@@ -176,7 +173,6 @@ export default function FileUpload({
                 isLoading={isLoadingStored}
                 images={filteredStoredImages}
                 selectedImages={selectedImages}
-                viewMode={viewMode}
                 searchTerm={searchTerm}
                 onSelectImage={toggleImageSelection}
                 onDeleteImage={handleDeleteImage}

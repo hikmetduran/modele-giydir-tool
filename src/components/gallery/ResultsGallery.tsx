@@ -678,13 +678,13 @@ function ResultCard({
                 </button>
 
                 {/* Images and Video */}
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
                     <Image
                         src={result.product_images.image_url}
                         alt="Original"
                         width={80}
                         height={80}
-                        className="w-20 h-20 rounded-lg object-cover"
+                        className="w-24 h-32 rounded-lg object-cover"
                     />
                     <div className="text-gray-400 text-3xl">→</div>
                     <Image
@@ -692,17 +692,17 @@ function ResultCard({
                         alt="Try-on result"
                         width={80}
                         height={80}
-                        className="w-20 h-20 rounded-lg object-cover"
+                        className="w-24 h-32 rounded-lg object-cover"
                     />
                     
                     {/* Video thumbnail */}
                     {hasVideo && (
                         <>
                             <div className="text-gray-400 text-3xl">→</div>
-                            <div className="w-20 h-20">
+                            <div className="w-24 h-32">
                                 <VideoThumbnail
                                     videoUrl={result.video_url!}
-                                    className="w-20 h-20 rounded-lg"
+                                    className="w-24 h-32 rounded-lg"
                                     onDownload={() => onDownloadVideo(result.video_url!, `try-on-video-${result.id}.mp4`)}
                                     autoPlay={true}
                                 />

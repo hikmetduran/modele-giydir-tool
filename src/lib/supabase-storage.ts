@@ -738,27 +738,187 @@ export async function getUserProductImages(userId: string) {
     }
 }
 
+// Check for dependent try-on results before deletion
+export async function getProductImageDependencies(imageId: string, userId: string) {
+    try {
+        console.log(`🔍 Checking dependencies for product image: ${imageId}`)
+
+        const { data, error } = await supabase
+            .from('try_on_results')
+            .select(`
+                id,
+                created_at,
+                result_image_url,
+                model_photos!inner(
+                    id,
+                    name,
+                    image_url
+                )
+            `)
+            .eq('product_image_id', imageId)
+            .eq('user_id', userId)
+            .eq('status', 'completed')
+            .not('result_image_url', 'is', null)
+            .order('created_at', { ascending: false })
+
+        if (error) {
+            console.error('❌ Error checking dependencies:', error)
+            return {
+                success: false,
+                error: error.message,
+                dependencies: []
+            }
+        }
+
+        console.log(`✅ Found ${data?.length || 0} dependent try-on results`)
+        return {
+            success: true,
+            dependencies: data || []
+        }
+    } catch (error) {
+        console.error('❌ Error in getProductImageDependencies:', error)
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error',
+            dependencies: []
+        }
+    }
+}
+
+// Delete try-on results and their associated files
+export async function deleteTryOnResults(resultIds: string[], userId: string) {
+    try {
+        console.log(`🗑️ Deleting ${resultIds.length} try-on results for user: ${userId}`)
+
+        // First, get all the result details to find storage paths
+        const { data: results, error: fetchError } = await supabase
+            .from('try_on_results')
+            .select('id, result_image_path, video_path')
+            .in('id', resultIds)
+            .eq('user_id', userId)
+
+        if (fetchError) {
+            console.error('❌ Error fetching try-on results for deletion:', fetchError)
+            throw new Error(`Failed to fetch results: ${fetchError.message}`)
+        }
+
+        // Delete files from storage
+        const filesToDelete: string[] = []
+        results?.forEach(result => {
+            if (result.result_image_path) {
+                filesToDelete.push(result.result_image_path)
+            }
+            if (result.video_path) {
+                filesToDelete.push(result.video_path)
+            }
+        })
+
+        if (filesToDelete.length > 0) {
+            console.log(`📁 Deleting ${filesToDelete.length} files from storage`)
+            const { error: storageError } = await supabase.storage
+                .from('try-on-results')
+                .remove(filesToDelete)
+
+            if (storageError) {
+                console.error('❌ Error deleting files from storage:', storageError)
+                // Don't throw here - continue with database deletion
+            }
+        }
+
+        // Delete from database
+        const { error: dbError } = await supabase
+            .from('try_on_results')
+            .delete()
+            .in('id', resultIds)
+            .eq('user_id', userId)
+
+        if (dbError) {
+            console.error('❌ Error deleting try-on results from database:', dbError)
+            throw new Error(`Failed to delete results: ${dbError.message}`)
+        }
+
+        console.log(`✅ Successfully deleted ${resultIds.length} try-on results`)
+        return { success: true }
+
+    } catch (error) {
+        console.error('❌ Error in deleteTryOnResults:', error)
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Delete failed'
+        }
+    }
+}
+
+// Enhanced delete product image with dependency checking and cascading deletion
+export async function deleteProductImageWithDependencies(imageId: string, userId: string) {
+    try {
+        console.log(`🗑️ Starting enhanced deletion for product image: ${imageId}`)
+
+        // Check for dependencies first
+        const dependencyCheck = await getProductImageDependencies(imageId, userId)
+        if (!dependencyCheck.success) {
+            return {
+                success: false,
+                error: dependencyCheck.error
+            }
+        }
+
+        // If there are dependencies, delete them first
+        if (dependencyCheck.dependencies.length > 0) {
+            console.log(`🔗 Found ${dependencyCheck.dependencies.length} dependent results, deleting them first`)
+            
+            const resultIds = dependencyCheck.dependencies.map(dep => dep.id)
+            const deleteResultsResponse = await deleteTryOnResults(resultIds, userId)
+            
+            if (!deleteResultsResponse.success) {
+                return {
+                    success: false,
+                    error: `Failed to delete dependent results: ${deleteResultsResponse.error}`
+                }
+            }
+        }
+
+        // Now delete the product image using the original function
+        const deleteImageResponse = await deleteProductImage(imageId, userId)
+        
+        return {
+            success: deleteImageResponse.success,
+            error: deleteImageResponse.error,
+            deletedDependencies: dependencyCheck.dependencies.length
+        }
+
+    } catch (error) {
+        console.error('❌ Error in deleteProductImageWithDependencies:', error)
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Enhanced deletion failed'
+        }
+    }
+}
+
 // Delete a product image from both storage and database
 export async function deleteProductImage(imageId: string, userId: string) {
     try {
         console.log(`🗑️ Deleting product image: ${imageId} for user: ${userId}`)
 
         // First, get the image details to find the storage path
-        const { data: imageData, error: fetchError } = await supabase
+        const { data: imageDataArray, error: fetchError } = await supabase
             .from('product_images')
             .select('image_path, image_url, original_filename')
             .eq('id', imageId)
             .eq('user_id', userId)
-            .single()
 
         if (fetchError) {
             console.error('❌ Error fetching image details:', fetchError)
             throw new Error(`Failed to fetch image details: ${fetchError.message}`)
         }
 
-        if (!imageData) {
-            throw new Error('Image not found or access denied')
+        if (!imageDataArray || imageDataArray.length === 0) {
+            console.log(`⚠️ Image ${imageId} not found in database - may have been already deleted`)
+            return { success: true } // Consider it successful if already deleted
         }
+
+        const imageData = imageDataArray[0]
 
         console.log(`📁 Deleting from storage: ${imageData.image_path}`)
 

@@ -1,9 +1,12 @@
 'use client'
 
+import { useState } from 'react'
 import Image from 'next/image'
 import { Loader2, ImageIcon, CheckCircle, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { StoredImage, SelectableImage } from '@/lib/types'
+import { getProductImageDependencies, deleteProductImageWithDependencies } from '@/lib/supabase-storage'
+import { DeleteConfirmationDialog } from '@/components/ui/DeleteConfirmationDialog'
 
 interface StoredImageGalleryProps {
     isLoading: boolean
@@ -11,7 +14,10 @@ interface StoredImageGalleryProps {
     selectedImages: SelectableImage[]
     searchTerm: string
     onSelectImage: (id: string) => void
-    onDeleteImage: (id: string) => void
+    onImageDeleted?: (imageId: string) => void // New optional callback for UI updates
+    userId: string
+    showSuccess: (title: string, message?: string) => void
+    showError: (title: string, message?: string) => void
 }
 
 export function StoredImageGallery({
@@ -20,8 +26,122 @@ export function StoredImageGallery({
     selectedImages,
     searchTerm,
     onSelectImage,
-    onDeleteImage
+    onImageDeleted,
+    userId,
+    showSuccess,
+    showError
 }: StoredImageGalleryProps) {
+    const [deleteDialog, setDeleteDialog] = useState<{
+        isOpen: boolean
+        image: StoredImage | null
+        dependencies: any[] // eslint-disable-line @typescript-eslint/no-explicit-any
+        isLoading: boolean
+        isDeleting: boolean
+    }>({
+        isOpen: false,
+        image: null,
+        dependencies: [],
+        isLoading: false,
+        isDeleting: false
+    })
+
+    const handleDeleteClick = async (image: StoredImage) => {
+        setDeleteDialog({
+            isOpen: true,
+            image,
+            dependencies: [],
+            isLoading: true,
+            isDeleting: false
+        })
+
+        try {
+            const dependencyCheck = await getProductImageDependencies(image.id, userId)
+            
+            setDeleteDialog(prev => ({
+                ...prev,
+                dependencies: dependencyCheck.success ? dependencyCheck.dependencies : [],
+                isLoading: false
+            }))
+        } catch (error) {
+            console.error('Error checking dependencies:', error)
+            showError('Error', 'Failed to check for dependent results. Please try again.')
+            setDeleteDialog(prev => ({
+                ...prev,
+                dependencies: [],
+                isLoading: false
+            }))
+        }
+    }
+
+    const handleConfirmDelete = async () => {
+        if (!deleteDialog.image) return
+
+        setDeleteDialog(prev => ({ ...prev, isDeleting: true }))
+
+        try {
+            const result = await deleteProductImageWithDependencies(deleteDialog.image.id, userId)
+            
+            if (result.success) {
+                const dependencyCount = deleteDialog.dependencies.length
+                
+                // Show success message
+                if (dependencyCount > 0) {
+                    showSuccess(
+                        'Image and Results Deleted',
+                        `Successfully deleted "${deleteDialog.image.original_filename}" and ${dependencyCount} dependent result${dependencyCount !== 1 ? 's' : ''}.`
+                    )
+                } else {
+                    showSuccess(
+                        'Image Deleted',
+                        `Successfully deleted "${deleteDialog.image.original_filename}".`
+                    )
+                }
+                
+                // Call the new callback to update UI state without triggering another deletion
+                if (onImageDeleted) {
+                    onImageDeleted(deleteDialog.image.id)
+                }
+                
+                // Dispatch event to notify other components (like ResultsGallery)
+                window.dispatchEvent(new CustomEvent('productImageDeleted', {
+                    detail: {
+                        imageId: deleteDialog.image.id,
+                        deletedDependencies: dependencyCount
+                    }
+                }))
+                
+                // Close dialog
+                setDeleteDialog({
+                    isOpen: false,
+                    image: null,
+                    dependencies: [],
+                    isLoading: false,
+                    isDeleting: false
+                })
+            } else {
+                throw new Error(result.error || 'Deletion failed')
+            }
+        } catch (error) {
+            console.error('Delete error:', error)
+            showError(
+                'Deletion Failed',
+                error instanceof Error ? error.message : 'Failed to delete image. Please try again.'
+            )
+            setDeleteDialog(prev => ({ ...prev, isDeleting: false }))
+        }
+    }
+
+    const handleCloseDialog = () => {
+        if (deleteDialog.isDeleting) return // Prevent closing while deleting
+        
+        setDeleteDialog({
+            isOpen: false,
+            image: null,
+            dependencies: [],
+            isLoading: false,
+            isDeleting: false
+        })
+    }
     if (isLoading) {
         return (
             <div className="flex items-center justify-center py-12">
@@ -76,7 +196,7 @@ export function StoredImageGallery({
                         <button
                             onClick={(e) => {
                                 e.stopPropagation()
-                                onDeleteImage(image.id)
+                                handleDeleteClick(image)
                             }}
                             className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-lg"
                         >
@@ -85,6 +205,22 @@ export function StoredImageGallery({
                     </div>
                 )
             })}
+
+            {/* Delete Confirmation Dialog */}
+            {deleteDialog.image && (
+                <DeleteConfirmationDialog
+                    isOpen={deleteDialog.isOpen}
+                    onClose={handleCloseDialog}
+                    onConfirm={handleConfirmDelete}
+                    productImage={{
+                        id: deleteDialog.image.id,
+                        original_filename: deleteDialog.image.original_filename,
+                        image_url: deleteDialog.image.image_url
+                    }}
+                    dependencies={deleteDialog.isLoading ? [] : deleteDialog.dependencies}
+                />
+            )}
+
         </div>
     )
 }

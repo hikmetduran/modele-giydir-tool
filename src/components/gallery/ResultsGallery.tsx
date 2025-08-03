@@ -143,9 +143,21 @@ export default function ResultsGallery({ className }: ResultsGalleryProps) {
         }
     }, [user])
 
-    // Load data on mount
+    // Load data on mount and listen for deletion events
     useEffect(() => {
         loadResults()
+
+        // Listen for product image deletion events
+        const handleProductImageDeleted = () => {
+            console.log('🔄 Product image deleted, refreshing results...')
+            loadResults()
+        }
+
+        window.addEventListener('productImageDeleted', handleProductImageDeleted)
+
+        return () => {
+            window.removeEventListener('productImageDeleted', handleProductImageDeleted)
+        }
     }, [user, loadResults])
 
     // Filter and sort results

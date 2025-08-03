@@ -6,6 +6,7 @@ import { AlertCircle, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SelectableImage, StoredImage } from '@/lib/types'
 import { useAuth } from '@/components/auth/AuthProvider'
+import { useToast } from '@/components/ui/Toast'
 import { useFileUpload } from './hooks/useFileUpload'
 import { useStoredImages } from './hooks/useStoredImages'
 import { useImageSelection } from './hooks/useImageSelection'
@@ -29,6 +30,7 @@ export default function FileUpload({
     className
 }: FileUploadProps) {
     const { user } = useAuth()
+    const { ToastContainer, showSuccess, showError } = useToast()
     const [globalError, setGlobalError] = useState<string | null>(null)
 
     const {
@@ -37,9 +39,9 @@ export default function FileUpload({
         error: storedImagesError,
         searchTerm,
         setSearchTerm,
-        deleteImage,
         addStoredImage,
         filteredStoredImages,
+        setStoredImages,
     } = useStoredImages()
 
     const {
@@ -103,11 +105,12 @@ export default function FileUpload({
         noClick: true
     })
 
-    const handleDeleteImage = async (imageId: string) => {
-        const success = await deleteImage(imageId)
-        if (success) {
-            removeSelectedImage(imageId)
-        }
+    // New function to handle UI updates after successful deletion
+    const handleImageDeleted = (imageId: string) => {
+        // Update the stored images state directly without calling the deletion API
+        setStoredImages(prev => prev.filter(img => img.id !== imageId))
+        // Also remove from selected images
+        removeSelectedImage(imageId)
     }
 
 
@@ -175,8 +178,14 @@ export default function FileUpload({
                 selectedImages={selectedImages}
                 searchTerm={searchTerm}
                 onSelectImage={toggleImageSelection}
-                onDeleteImage={handleDeleteImage}
+                onImageDeleted={handleImageDeleted}
+                userId={user.id}
+                showSuccess={showSuccess}
+                showError={showError}
             />
+            
+            {/* Toast Notifications */}
+            <ToastContainer />
         </div>
     )
 }
